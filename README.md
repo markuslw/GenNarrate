@@ -70,6 +70,23 @@ $ sudo apt install nodejs npm
 > [!WARNING]
 > The inference engine is developed using Python 3.10.13. Not higher, not lower.
 
-To install a lower python version, you could use miniconda which is used by the university as well.
+Two shell scripts are provided to help run the inference engine on a remote server. `port_forward.sh` takes input and forwards a local port to a remote server and executes the Python script, while `kill_forwarding.sh` kills the process and the port forwarding.
 
-More info coming soon.
+The shell scripts provided in this directory assume that you have [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/main) installed with said Python version. To checked if you have miniconda installed, you can run the following command
+
+```bash
+$ conda --version
+```
+
+Once installed, you will have to create a conda environment with the required packages. This can be done by running the following commands in the `inference/` directory once minisconda is installed
+
+```bash
+$ conda create -n inference python=3.10.13
+$ conda activate inference
+$ pip install -r requirements.txt
+```
+
+From here you can exit the remote server and run the shell scripts locally to forward the port and run the inference engine
+```bash
+$ ./port_forward.sh <server_name> <local_port> <private_key> <file_path>
+```
