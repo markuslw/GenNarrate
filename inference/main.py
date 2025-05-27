@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from flask import Flask, request, jsonify
-import fitz
+from flask import Flask, request, jsonify                       # type: ignore
+import fitz                                                     # type: ignore  
 
-import torch
-from torch.serialization import add_safe_globals
+import torch                                                    # type: ignore
+from torch.serialization import add_safe_globals                # type: ignore
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from TTS.tts.configs.xtts_config import XttsConfig              # type: ignore
@@ -28,21 +28,29 @@ def index():
 @app.route("/generateTextString", methods=["POST"])
 def text_to_text():
     data = request.get_json()
-    text = data["text"]
+    full_conversation = data["conversation"]
 
-    inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    inputs = tokenizer(full_conversation, return_tensors="pt").to(model.device)
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=700, temperature=0.8)
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    if "Botty:" in generated:
+        response = generated.rsplit("Botty:", 1)[-1].strip()
+    else:
+        response = generated.strip()
 
     return jsonify({"response": response})
 
 @app.route("/generateVoiceAudio", methods=["POST"])
 def text_to_speech():
+    data = request.get_json()
+    text = data["text"]
+
     tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=True)
 
     tts.tts_to_file(
-        text=ai_text,
+        text=text,
         file_path="output2.wav",
         speaker_wav="female.wav",
         language="en"

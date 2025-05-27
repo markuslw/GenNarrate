@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import fitz
 import requests
+import json
 # Create your views here.
 
 @csrf_exempt
@@ -24,7 +25,7 @@ def upload_file(request):
         }
 
         response = requests.post(url, json=data)
-        text_response = response.json().get("response", "")
+        text_response = response.json().get("response")
         
         return JsonResponse({"message": text_response}, status=200)
     
@@ -34,11 +35,29 @@ def upload_file(request):
 @csrf_exempt
 def conversate(request):
     if request.method == 'POST':
-        text = request.POST.get('text')
-        if not text:
-            return JsonResponse({"message": "No text provided!"}, status=400)
+        prompt = request.POST.get('prompt')
+        history = request.POST.get('history')
+        decoded_history = json.loads(history)
 
-        print("Received text:", text)
+        print(prompt)
+        print(decoded_history)
 
-        return JsonResponse({"message": "Hello there this is just me testing!"}, status=200)
+        full_conversation = ""
+        for msg in decoded_history:
+            role = msg["role"]
+            text = msg["text"]
+            full_conversation += f"{role.capitalize()}: {text}\n"
+        full_conversation += f"User: {prompt}\n"
+        print(full_conversation)
+
+        url = "http://localhost:5001/generateTextString"
+        data = {
+            "conversation": full_conversation,
+        }
+
+        response = requests.post(url, json=data)
+        text_response = response.json().get("response")
+        print("response below\n\n", text_response)
+
+        return JsonResponse({"message": text_response}, status=200)
     return JsonResponse({"message": "Wrong request method!"}, status=400)

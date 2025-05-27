@@ -4,11 +4,15 @@ import React, { useState } from 'react';
 function App() {
 
   const [pdfFile, setPdfFile] = useState(null);
-
-  const [conversation, setConversation] = useState([]);
-  const [text, setText] = useState([]);
+  const [conversation, setConversation] = useState([
+    { role: "User", text: "Hello Botty!" },
+    {role: "Botty", text: "Hello User!"}
+  ]);
+  const [text, setText] = useState("");
 
   const handleFileChange = (e) => {
+    e.preventDefault();
+
     const file = e.target.files[0];
     setPdfFile(file);
 
@@ -24,12 +28,13 @@ function App() {
 
   const handleInput = (e) => {
     e.preventDefault();
-    console.log("Input text:", text);
-
-    setConversation((conversation) => [...conversation, text]);
 
     const formData = new FormData();
-    formData.append('text', text);
+    formData.append('prompt', text);
+    formData.append('history', JSON.stringify(conversation));
+
+    setConversation((conversation) => [...conversation, { role: "User", text: text }]);
+    setText("");
 
     const postWords = fetch('http://localhost:8000/api/conversate/', {
       method: 'POST',
@@ -39,7 +44,7 @@ function App() {
       .then(data => data["message"])
       .then(message => {
         console.log("Response from server:", message);
-        setConversation((conversation) => [...conversation, message]);
+        setConversation((conversation) => [...conversation, {role: "Botty", text: message}]);
       });
   }
   
@@ -53,9 +58,11 @@ function App() {
       <h1>GenNarrate</h1>
 
       <div className="chatHistory">
-        {conversation.map((text, index) => (
-          <p key={index} className={index % 2 === 0 ? 'right' : 'left'}>
-            {text}
+        {conversation.map((message, index) => (
+          <p key={index} className={message.role === "User" ? "right" : "left"}>
+            <strong>{message.role}:</strong>
+            <br />
+            {message.text}
           </p>
         ))}
       </div>

@@ -14,7 +14,7 @@ fi
 
 echo -n "Killing remote python server on ${SERVER_NAME}... "
 ssh "${SERVER_NAME}" "pkill -f 'python3 ${FILE_PATH}'" && \
-echo -e "\033[0;32mOK\033[0m" || { echo -e "\033[0;31mFAILED\033[0m"; exit 1; }
+echo -e "\033[0;32mOK\033[0m" || { echo -e "\033[0;31mFAILED\033[0m"; }
 
 sleep 1
 

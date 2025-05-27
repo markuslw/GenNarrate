@@ -23,4 +23,4 @@ echo -n "Forwarding port ${LOCAL_PORT} to ${SERVER_NAME}:5000..."
 ssh -f -N -L "${LOCAL_PORT}:localhost:5000" -i ~/.ssh/${PRIVATE_KEY} "${SERVER_NAME}" && \
 echo -e "\033[0;32mOK\033[0m" || { echo -e "\033[0;31mFAILED\033[0m"; exit 1; }
 
-echo "To kill server and forwarding, run \033[0;34mkill_forwarding.sh\033[0m"
+echo -e "To kill server and forwarding, run \033[0;34mkill_forwarding.sh\033[0m"
