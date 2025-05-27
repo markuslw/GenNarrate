@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import fitz
+import requests
 # Create your views here.
 
 @csrf_exempt
@@ -11,16 +12,24 @@ def upload_file(request):
         if not file:
             return JsonResponse({"message": "No file provided!"}, status=400)
 
-        print("Received file:", file.name, file.size)
-
         pdf_bytes = file.read()
         text = ""
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
             for page in doc:
                 text += page.get_text() + "\n"
+
+        url = "http://localhost:5001/generateTextString"
+        data = {
+            "text": text,
+        }
+
+        response = requests.post(url, json=data)
+        text_response = response.json().get("response", "")
         
-        return JsonResponse({"message": "File uploaded successfully!"}, status=200)
-    return JsonResponse({"message": "Wrong request method!"}, status=400)
+        return JsonResponse({"message": text_response}, status=200)
+    
+    else:
+        return JsonResponse({"message": "Wrong request method!"}, status=400)
 
 @csrf_exempt
 def conversate(request):

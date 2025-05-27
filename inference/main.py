@@ -1,11 +1,14 @@
+#!/usr/bin/env python3
 from flask import Flask, request, jsonify
 import fitz
+
 import torch
 from torch.serialization import add_safe_globals
-from TTS.tts.configs.xtts_config import XttsConfig
-from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs
-from TTS.config.shared_configs import BaseDatasetConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
+from TTS.tts.configs.xtts_config import XttsConfig              # type: ignore
+from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs       # type: ignore
+from TTS.config.shared_configs import BaseDatasetConfig         # type: ignore
 
 app = Flask(__name__)
 
@@ -20,7 +23,7 @@ model.eval()
 
 @app.route("/")
 def index():
-    return jsonify({"message": "Welcome to the Question Answering API!"})
+    return jsonify({"message": "API is up and running"})
 
 @app.route("/generateTextString", methods=["POST"])
 def text_to_text():
