@@ -5,9 +5,86 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  background-color: #111111;
+  color: white;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  width: 50px;
+  height: auto;
+  margin-top: 20px;
+}
+
+.chatBox {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.textField{
+  padding: 10px;
+  border-radius: 10px;
+  border: solid 1px #555555;
+  background-color:	#111111;
+  color: #ffffff;
+  margin-right: 5px;
+
+  outline: none;
+}
+
+.submit{
+  padding: 10px 15px 10px 15px;
+  border-radius: 10px;
+  border: none;
+  background-color: #3b82f6;
+  color: white;
+  margin-left: 5px;
+
+  cursor: pointer;
+}
+
+.upload{
+  padding: 5px 0px 5px 0px;
+  border-radius: 10px;
+  border: none;
+  color: white;
+  margin-top: 15px;
+}
+
+.chatHistory{
+  width: 30vw;
+  margin-top: 5vw;
+}
+
+.left {
+  color: #ffffff;
+  text-align: left;
+  background-color: #555555;
+  padding: 10px;
+  border-radius: 10px;
+  margin-right: auto;
+  max-width: 60%;
+}
+
+.right {
+  color: #ffffff;
+  text-align: right;
+  background-color: #007AFF;
+  padding: 10px;
+  border-radius: 10px;
+  margin-left: auto;
+  max-width: 60%;
 }

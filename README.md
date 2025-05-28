@@ -18,7 +18,7 @@ GenNarrate/
 > [!TIP]
 > Developed using Python 3.12.3 or higher.
 
-1. naviate to the `backend` directory
+1. navigate to the `backend/` directory
     ```bash
     $ cd backend/
     ```
@@ -53,7 +53,7 @@ $ sudo apt install nodejs npm
 
 #### See below for setup instructuons
 
-1. navigate to the `frontend` directory
+1. navigate to the `frontend/` directory
     ```bash
     $ cd frontend/
     ```
@@ -75,12 +75,14 @@ Two shell scripts are provided to help run the inference engine on a remote serv
 The shell scripts provided in this directory assume that you have [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/main) installed with said Python version. To checked if you have miniconda installed, you can run the following command
 
 ```bash
+$ ssh user@hostname
 $ conda --version
 ```
 
 Once installed, you will have to create a conda environment with the required packages. This can be done by running the following commands in the `inference/` directory once minisconda is installed
 
 ```bash
+$ cd inference/
 $ conda create -n inference python=3.10.13
 $ conda activate inference
 $ pip install -r requirements.txt
@@ -88,5 +90,6 @@ $ pip install -r requirements.txt
 
 From here you can exit the remote server and run the shell scripts locally to forward the port and run the inference engine
 ```bash
+$ chmod +x port_forward.sh
 $ ./port_forward.sh <server_name> <local_port> <private_key> <file_path>
 ```

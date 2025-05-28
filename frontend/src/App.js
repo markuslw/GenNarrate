@@ -1,4 +1,5 @@
 import './App.css';
+import Logo from './logo.png';
 import React, { useState } from 'react';
 
 function App() {
@@ -55,21 +56,19 @@ function App() {
 
   return (
     <div className="root">
+      <img src={Logo} className='logo' />
       <h1>GenNarrate</h1>
 
       <div className="chatHistory">
         {conversation.map((message, index) => (
           <p key={index} className={message.role === "User" ? "right" : "left"}>
-            <strong>{message.role}:</strong>
-            <br />
             {message.text}
           </p>
         ))}
       </div>
-        
+      
       <form className="chatBox" onSubmit={handleInput}>
-        <input className="textField" type="text" onChange={handleConversation} />
-        <button className="submit" type="submit">Send</button>
+        <input className="textField" type="text" placeholder="Start typing..." onChange={handleConversation} />
         <div className="upload">
           <input type="file" accept="application/pdf" onChange={handleFileChange} />
           {pdfFile && (
