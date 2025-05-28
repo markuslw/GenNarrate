@@ -11,7 +11,10 @@ function App() {
   ]);
   const [text, setText] = useState("");
 
-  const handleFileChange = (e) => {
+  /*
+    Function to handle file upload.
+  */
+  const submitFile = (e) => {
     e.preventDefault();
 
     const file = e.target.files[0];
@@ -20,14 +23,17 @@ function App() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const postFile = fetch('http://localhost:8000/api/upload/', {
+    const postFile = fetch('http://localhost:8000/upload/file/', {
       method: 'POST',
       body: formData,
       credentials: 'omit',
     });
   };
 
-  const handleInput = (e) => {
+  /*
+    Function to handle text submission.
+  */
+  const submitPrompt = (e) => {
     e.preventDefault();
 
     const formData = new FormData();
@@ -37,10 +43,9 @@ function App() {
     setConversation((conversation) => [...conversation, { role: "User", text: text }]);
     setText("");
 
-    const postWords = fetch('http://localhost:8000/api/conversate/', {
+    const postWords = fetch('http://localhost:8000/upload/text/', {
       method: 'POST',
       body: formData,
-      credentials: 'omit',
     }).then(response => response.json())
       .then(data => data["message"])
       .then(message => {
@@ -49,7 +54,10 @@ function App() {
       });
   }
   
-  const handleConversation = (e) => {
+  /*
+    Function to handle text input changes.
+  */
+  const handlePrompt = (e) => {
     const inputText = e.target.value;
     setText(inputText);
   }
@@ -67,10 +75,10 @@ function App() {
         ))}
       </div>
       
-      <form className="chatBox" onSubmit={handleInput}>
-        <input className="textField" type="text" placeholder="Start typing..." onChange={handleConversation} />
+      <form className="chatBox" onSubmit={submitPrompt}>
+        <input className="textField" type="text" placeholder="Start typing..." onChange={handlePrompt} />
         <div className="upload">
-          <input type="file" accept="application/pdf" onChange={handleFileChange} />
+          <input type="file" accept="application/pdf" onChange={submitFile} />
           {pdfFile && (
             <p>Uploaded: <strong>{pdfFile.name}</strong></p>
           )}

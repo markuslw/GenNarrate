@@ -5,16 +5,16 @@ A generative artificial intelligence project by @markuslw and @toropdahl for the
 
 ```
 GenNarrate/
-├── backend/ # Django API
+├── backend/ # Flask API
 ├── frontend/ # React.js interface
-├── inference/ # Inference engine
+├── inference/ # Inference engine (Flask)
 ```
 
 ## 🔧 Setup
 > [!NOTE]
 >The project is developed on Linux Ubuntu 24.04.2 LTS. Depending on your OS, you may need to adapt the commands and packages.
 
-### 🧑‍💻 Django
+### 🧑‍💻 Flask API
 > [!TIP]
 > Developed using Python 3.12.3 or higher.
 
@@ -33,7 +33,7 @@ GenNarrate/
     ```
 4. run the server
     ```bash
-    $ python manage.py runserver
+    $ python3 main.py
     ```
 
 ### ⚛️ React.js
@@ -66,7 +66,7 @@ $ sudo apt install nodejs npm
     $ npm start
     ```
 
-### 🧠 Inference Engine
+### 🧠 Inference Engine (Flask)
 > [!WARNING]
 > The inference engine is developed using Python 3.10.13. Not higher, not lower.
 

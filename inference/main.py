@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify                       # type: ignore
-import fitz                                                     # type: ignore  
 
 import torch                                                    # type: ignore
 from torch.serialization import add_safe_globals                # type: ignore
