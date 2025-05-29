@@ -9,7 +9,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequen
 from transformers import GenerationConfig
 from transformers import pipeline
 
-from TTS.api import TTS
+from kokoro import KPipeline
+from IPython.display import Audio
+import soundfile as sf
 
 BASE_DIR = os.path.dirname(__file__)
 speaker_wav = os.path.join(BASE_DIR, "female.wav")
@@ -76,7 +78,14 @@ def text_to_speech(text):
     if not text:
         text = "Hello, this is a default text for TTS."
 
-    
+    pipeline = KPipeline(lang_code='a')
+
+    generator = pipeline(text, voice='af_bella')
+
+    for i, (gs, ps, audio) in enumerate(generator):
+        print(f"Segment {i}: {gs}")
+        sf.write(f'output_{i}.wav', audio, 24000)
+        display(Audio(data=audio, rate=24000))
     
     return True
 
