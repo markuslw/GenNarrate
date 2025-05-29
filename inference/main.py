@@ -22,14 +22,41 @@ model.eval()
 
 @app.route("/")
 def index():
-    return jsonify({"message": "API is up and running"})
+    return jsonify({"message": "Inference API is up and running"})
+
+def classify_prompt(prompt):
+    classification_prompt = f"""
+        You are an intent classifier. Classify the user's intent from the following list:
+
+        - text_summary
+        - image_gen
+
+        User prompt: "{prompt}"
+
+        Respond with one label only, with no explanation or punctuation.
+        """
+    
+    inputs = tokenizer(classification_prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=10, temperature=0.0)
+    label = tokenizer.decode(outputs[0], skip_special_tokens=True).strip().lower()
+
+    valid_labels = {"text_summary", "image_gen"}
+    if label not in valid_labels:
+        label = "text_summary"
+
+    return label
 
 @app.route("/generateTextString", methods=["POST"])
 def text_to_text():
-    data = request.get_json()
-    full_conversation = data["conversation"]
+    prompt = request.form.get("prompt")
+    history = request.form.get("history")
 
-    inputs = tokenizer(full_conversation, return_tensors="pt").to(model.device)
+    label = classify_prompt(prompt)
+
+    return jsonify({"response": label})
+
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=700, temperature=0.8)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)

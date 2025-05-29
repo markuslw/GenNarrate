@@ -27,6 +27,16 @@ code {
   margin-top: 20px;
 }
 
+.ttsButton {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background-color: #800000;
+  color: white;
+
+  cursor: pointer;
+}
+
 .chatBox {
   display: flex;
   flex-direction: column;

@@ -11,7 +11,7 @@ CORS(app)
 
 @app.route("/")
 def index():
-    return jsonify({"message": "API is up and running"})
+    return jsonify({"message": "Backend API is up and running"})
 
 @app.route("/upload/file/", methods=["POST"])
 def upload_files():
@@ -34,21 +34,25 @@ def upload_files():
 
 @app.route("/upload/text/", methods=["POST"])
 def upload_text():
-
     prompt = request.form.get("prompt")
     history = request.form.get("history")
-    decoded_history = json.loads(history)
+    file = request.files.get("file")
 
-    full_conversation = ""
-    for msg in decoded_history:
-        role = msg["role"]
-        text = msg["text"]
-        full_conversation += f"{role.capitalize()}: {text}\n"
-    full_conversation += f"User: {prompt}\n"
+    if history:
+        decoded_history = json.loads(history)
 
+        conversation = ""
+        for msg in decoded_history:
+            role = msg["role"]
+            text = msg["text"]
+            conversation += f"{role.capitalize()}: {text}\n"
+        conversation += f"User: {prompt}\n"
+    
     url = "http://localhost:5001/generateTextString"
     data = {
-        "conversation": full_conversation,
+        "prompt": prompt,
+        "history": history,
+        "conversation": conversation,
     }
 
     response = requests.post(url, json=data)

@@ -1,47 +1,41 @@
 import './App.css';
 import Logo from './logo.png';
+import Mute from './mute.png';
+import Open from './open.png';
 import React, { useState } from 'react';
 
 function App() {
 
-  const [pdfFile, setPdfFile] = useState(null);
-  const [conversation, setConversation] = useState([
+  const [TTS, setTTS] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [file, setFile] = useState(null);
+  const [history, setHistory] = useState([
     { role: "User", text: "Hello Botty!" },
     {role: "Botty", text: "Hello User!"}
   ]);
-  const [text, setText] = useState("");
 
   /*
-    Function to handle file upload.
+    Function to handle request.
   */
-  const submitFile = (e) => {
-    e.preventDefault();
-
-    const file = e.target.files[0];
-    setPdfFile(file);
+  const submitPrompt = (event) => {
+    event.preventDefault();
 
     const formData = new FormData();
-    formData.append('file', file);
+    
+    if (prompt !== "") {
+      formData.append('prompt', prompt);
+    }
+    if (file !== null) {
+      formData.append('file', file);
+    }
+    if (history.length !== 0) {
+      formData.append('history', JSON.stringify(history));
+    }
+    formData.append('tts', TTS);
 
-    const postFile = fetch('http://localhost:8000/upload/file/', {
-      method: 'POST',
-      body: formData,
-      credentials: 'omit',
-    });
-  };
-
-  /*
-    Function to handle text submission.
-  */
-  const submitPrompt = (e) => {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append('prompt', text);
-    formData.append('history', JSON.stringify(conversation));
-
-    setConversation((conversation) => [...conversation, { role: "User", text: text }]);
-    setText("");
+    setHistory((history) => [...history, {role: "User", text: prompt}]);
+    setFile(null);
+    setPrompt("");
 
     const postWords = fetch('http://localhost:8000/upload/text/', {
       method: 'POST',
@@ -50,7 +44,7 @@ function App() {
       .then(data => data["message"])
       .then(message => {
         console.log("Response from server:", message);
-        setConversation((conversation) => [...conversation, {role: "Botty", text: message}]);
+        setHistory((history) => [...history, {role: "Botty", text: message}]);
       });
   }
   
@@ -59,16 +53,41 @@ function App() {
   */
   const handlePrompt = (e) => {
     const inputText = e.target.value;
-    setText(inputText);
+    setPrompt(inputText);
   }
+
+  /*
+    Function to handle file input changes.
+  */
+  const handleFile = (e) => {
+    const inputFile = e.target.files[0];
+    setFile(inputFile);
+  };
+
+  const handleTTS = () => {
+    setTTS(!TTS);
+    if (TTS === true) {
+      
+    } else {
+      
+    }
+  };
 
   return (
     <div className="root">
       <img src={Logo} className='logo' />
       <h1>GenNarrate</h1>
 
+      <button className='ttsButton' onClick={handleTTS} style={TTS ? { backgroundColor: '#3b82f6' } : {}} >
+        {TTS ? (
+          <img style={{ width: 40, height: 'auto' }} src={Open} />
+        ) : (
+          <img style={{ width: 40, height: 'auto' }} src={Mute} />
+        )}
+      </button>
+
       <div className="chatHistory">
-        {conversation.map((message, index) => (
+        {history.map((message, index) => (
           <p key={index} className={message.role === "User" ? "right" : "left"}>
             {message.text}
           </p>
@@ -78,9 +97,9 @@ function App() {
       <form className="chatBox" onSubmit={submitPrompt}>
         <input className="textField" type="text" placeholder="Start typing..." onChange={handlePrompt} />
         <div className="upload">
-          <input type="file" accept="application/pdf" onChange={submitFile} />
-          {pdfFile && (
-            <p>Uploaded: <strong>{pdfFile.name}</strong></p>
+          <input type="file" accept="application/pdf" onChange={handleFile} />
+          {file && (
+            <p>Uploaded: <strong>{file.name}</strong></p>
           )}
         </div>
       </form>
