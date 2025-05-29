@@ -37,6 +37,7 @@ def upload_text():
     prompt = request.form.get("prompt")
     history = request.form.get("history")
     file = request.files.get("file")
+    tts = request.form.get("tts")
 
     if history:
         decoded_history = json.loads(history)
@@ -53,6 +54,7 @@ def upload_text():
         "prompt": prompt,
         "history": history,
         "conversation": conversation,
+        "tts": tts,
     }
 
     response = requests.post(url, json=data)

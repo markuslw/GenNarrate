@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify                       # type: ignore
+import os
 
 import torch                                                    # type: ignore
 from torch.serialization import add_safe_globals                # type: ignore
@@ -8,11 +9,20 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequen
 from transformers import GenerationConfig
 from transformers import pipeline
 
+from TTS.api import TTS
 from TTS.tts.configs.xtts_config import XttsConfig              # type: ignore
 from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs       # type: ignore
 from TTS.config.shared_configs import BaseDatasetConfig         # type: ignore
 
-app = Flask(__name__)
+add_safe_globals([
+    XttsConfig,
+    XttsAudioConfig,
+    BaseDatasetConfig,
+    XttsArgs
+])
+
+BASE_DIR = os.path.dirname(__file__)
+speaker_wav = os.path.join(BASE_DIR, "female.wav")
 
 if not torch.cuda.is_available():
     raise RuntimeError("No CUDA/GPU")
@@ -32,6 +42,8 @@ classifier = pipeline(
     device=0
 )
 
+app = Flask(__name__)
+
 @app.route("/")
 def index():
     return jsonify({"message": "Inference API is up and running"})
@@ -48,6 +60,12 @@ def text_to_text():
 
     prompt = data.get("prompt")
     history = data.get("history")
+    tts = data.get("tts")
+    if tts:
+        print("TTS is enabled, generating audio response...", flush=True)
+        text_to_speech(prompt)
+    else:
+        print("TTS is disabled, generating text response...", flush=True)
     conversation = data.get("conversation")
 
     label = classify_prompt(prompt)
@@ -62,23 +80,22 @@ def text_to_text():
     else:
         response = generated.strip()
 
-    return jsonify({"response": response})
+    return jsonify({"response": response, "audio": "output.wav"})
 
-@app.route("/generateVoiceAudio", methods=["POST"])
-def text_to_speech():
-    data = request.get_json()
-    text = data["text"]
+def text_to_speech(text):
+    if not text:
+        text = "Hello, this is a default text for TTS."
 
     tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=True)
 
     tts.tts_to_file(
         text=text,
-        file_path="output2.wav",
+        file_path="output.wav",
         speaker_wav="female.wav",
         language="en"
     )
     
-    return jsonify({"message": "Audio generated successfully!"})
+    return True
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
