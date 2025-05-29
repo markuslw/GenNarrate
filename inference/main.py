@@ -3,13 +3,19 @@ from flask import Flask, request, jsonify                       # type: ignore
 
 import torch                                                    # type: ignore
 from torch.serialization import add_safe_globals                # type: ignore
-from transformers import AutoTokenizer, AutoModelForCausalLM
+
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from transformers import GenerationConfig
+from transformers import pipeline
 
 from TTS.tts.configs.xtts_config import XttsConfig              # type: ignore
 from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs       # type: ignore
 from TTS.config.shared_configs import BaseDatasetConfig         # type: ignore
 
 app = Flask(__name__)
+
+if not torch.cuda.is_available():
+    raise RuntimeError("No CUDA/GPU")
 
 model_id = "deepseek-ai/deepseek-llm-7b-chat"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -20,43 +26,33 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 model.eval()
 
+classifier = pipeline(
+    "zero-shot-classification",
+    model="facebook/bart-large-mnli",
+    device=0
+)
+
 @app.route("/")
 def index():
     return jsonify({"message": "Inference API is up and running"})
 
 def classify_prompt(prompt):
-    classification_prompt = f"""
-        You are an intent classifier. Classify the user's intent from the following list:
+    candidate_labels = ["text_summary", "image_generation", "text_to_text"]
+    result = classifier(prompt, candidate_labels)
 
-        - text_summary
-        - image_gen
-
-        User prompt: "{prompt}"
-
-        Respond with one label only, with no explanation or punctuation.
-        """
-    
-    inputs = tokenizer(classification_prompt, return_tensors="pt").to(model.device)
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=10, temperature=0.0)
-    label = tokenizer.decode(outputs[0], skip_special_tokens=True).strip().lower()
-
-    valid_labels = {"text_summary", "image_gen"}
-    if label not in valid_labels:
-        label = "text_summary"
-
-    return label
+    return result["labels"][0]
 
 @app.route("/generateTextString", methods=["POST"])
 def text_to_text():
-    prompt = request.form.get("prompt")
-    history = request.form.get("history")
+    data = request.get_json()
+
+    prompt = data.get("prompt")
+    history = data.get("history")
+    conversation = data.get("conversation")
 
     label = classify_prompt(prompt)
 
-    return jsonify({"response": label})
-
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    inputs = tokenizer(conversation, return_tensors="pt").to(model.device)
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=700, temperature=0.8)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
