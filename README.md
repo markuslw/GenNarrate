@@ -85,7 +85,6 @@ Once installed, you will have to create a conda environment with the required pa
 $ cd inference/
 $ conda create -n inference python=3.10.13
 $ conda activate inference
-$ pip install -r requirements.txt
 ```
 
 From here you can exit the remote server and run the shell scripts locally to forward the port and run the inference engine

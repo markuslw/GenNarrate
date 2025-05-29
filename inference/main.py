@@ -10,16 +10,6 @@ from transformers import GenerationConfig
 from transformers import pipeline
 
 from TTS.api import TTS
-from TTS.tts.configs.xtts_config import XttsConfig              # type: ignore
-from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs       # type: ignore
-from TTS.config.shared_configs import BaseDatasetConfig         # type: ignore
-
-add_safe_globals([
-    XttsConfig,
-    XttsAudioConfig,
-    BaseDatasetConfig,
-    XttsArgs
-])
 
 BASE_DIR = os.path.dirname(__file__)
 speaker_wav = os.path.join(BASE_DIR, "female.wav")
@@ -86,14 +76,7 @@ def text_to_speech(text):
     if not text:
         text = "Hello, this is a default text for TTS."
 
-    tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=True)
-
-    tts.tts_to_file(
-        text=text,
-        file_path="output.wav",
-        speaker_wav="female.wav",
-        language="en"
-    )
+    
     
     return True
 
