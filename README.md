@@ -68,7 +68,7 @@ $ sudo apt install nodejs npm
 
 ### 🧠 Inference Engine (Flask)
 > [!WARNING]
-> The inference engine is developed using Python 3.10.13. Not higher, not lower.
+> The inference engine is developed using Python 3.10.16. Not higher, not lower. Use the environment.yml file to create the conda environment with the correct Python version and packages.
 
 Two shell scripts are provided to help run the inference engine on a remote server. `port_forward.sh` takes input and forwards a local port to a remote server and executes the Python script, while `kill_forwarding.sh` kills the process and the port forwarding.
 
@@ -79,16 +79,20 @@ $ ssh user@hostname
 $ conda --version
 ```
 
+Conda is needed for environments where permissions are limited, e.g. on a remote server with no sudo access.
 Once installed, you will have to create a conda environment with the required packages. This can be done by running the following commands in the `inference/` directory once minisconda is installed
 
 ```bash
 $ cd inference/
-$ conda create -n inference python=3.10.13
-$ conda activate inference
+$ conda env create -f environment.yml # environment.yml file contains the required packages
+$ conda activate inference # the name of the environment is inference as defined in the YML file
 ```
 
+If you were to run into any issues with this environment, a `requirements.txt` file is also provided, which can be used to install the packages using `pip` while insdie the conda environment.
+
 From here you can exit the remote server and run the shell scripts locally to forward the port and run the inference engine
+
 ```bash
 $ chmod +x port_forward.sh
-$ ./port_forward.sh <server_name> <local_port> <private_key> <file_path>
+$ ./port_forward.sh <server_name> <local_port> <private_key> <work_dir>
 ```

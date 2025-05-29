@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import fitz
 import requests
@@ -39,6 +39,8 @@ def upload_text():
     file = request.files.get("file")
     tts = request.form.get("tts")
 
+    data = {}
+
     if history:
         decoded_history = json.loads(history)
 
@@ -48,19 +50,32 @@ def upload_text():
             text = msg["text"]
             conversation += f"{role.capitalize()}: {text}\n"
         conversation += f"User: {prompt}\n"
+
+        data["history"] = history
+        data["conversation"] = conversation
     
-    url = "http://localhost:5001/generateTextString"
     data = {
         "prompt": prompt,
-        "history": history,
-        "conversation": conversation,
         "tts": tts,
     }
 
-    response = requests.post(url, json=data)
-    text_response = response.json().get("response")
+    if tts.lower() == "true":
+        url = "http://localhost:5001/generateSpeechFromText"
 
-    return jsonify({"message": text_response})
+        def relay_audio_stream():
+            with requests.post(url, json=data, stream=True) as response:
+                for chunk in response.iter_content(chunk_size=4096):
+                    if chunk:
+                        yield chunk
+        
+        return Response(stream_with_context(relay_audio_stream()), mimetype='audio/wav')
+    
+    else:
+        url = "http://localhost:5001/generateTextString"
+        response = requests.post(url, json=data)
+        text_response = response.json().get("response")
+
+        return jsonify({"message": text_response})
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)

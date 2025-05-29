@@ -31,21 +31,40 @@ function App() {
     if (history.length !== 0) {
       formData.append('history', JSON.stringify(history));
     }
-    formData.append('tts', TTS);
+    if (TTS === true) {
+      formData.append('tts', "true");
+    }
 
     setHistory((history) => [...history, {role: "User", text: prompt}]);
     setFile(null);
     setPrompt("");
 
-    const postWords = fetch('http://localhost:8000/upload/text/', {
-      method: 'POST',
-      body: formData,
-    }).then(response => response.json())
-      .then(data => data["message"])
-      .then(message => {
-        console.log("Response from server:", message);
-        setHistory((history) => [...history, {role: "Botty", text: message}]);
+    if (TTS === true) {
+      fetch('http://localhost:8000/ttsAudio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: "Hello world" })
+      })
+        .then(res => res.blob())
+        .then(blob => {
+          const audioURL = URL.createObjectURL(blob);
+          const audio = new Audio(audioURL);
+          audio.play();
+        
+          setHistory(history => [...history, { role: "Botty", text: "Playing audio..." }]);
       });
+    } else {
+      fetch('http://localhost:8000/upload/text/', {
+        method: 'POST',
+        body: formData,
+      })
+        .then(response => response.json())
+        .then(data => data["message"])
+        .then(message => {
+          console.log("Response from server:", message);
+          setHistory((history) => [...history, { role: "Botty", text: message }]);
+        });
+    }
   }
   
   /*
@@ -64,13 +83,11 @@ function App() {
     setFile(inputFile);
   };
 
+  /*
+    Function to handle TTS toggle.
+  */
   const handleTTS = () => {
     setTTS(!TTS);
-    if (TTS === true) {
-      
-    } else {
-      
-    }
   };
 
   return (
