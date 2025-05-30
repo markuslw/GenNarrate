@@ -135,6 +135,7 @@ dependencies:
       - thinc==8.3.6
       - tokenizers==0.21.1
       - torch==2.7.0
+      - torchaudio==2.7.0
       - tqdm==4.67.1
       - traitlets==5.14.3
       - transformers==4.52.3

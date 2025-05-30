@@ -5,12 +5,26 @@ import Open from './open.png';
 import Typing from './typing.png';
 import Speaker from './speaker.png';
 import React, { useState } from 'react';
+import Recorder from 'recorder-js';
 
 function App() {
 
+  /*
+    From ChatGPT
+  */
+  const [isRecording, setIsRecording] = useState(false);
+  const [recorder, setRecorder] = useState(null);
+  const [stream, setStream] = useState(null);
+
+  /*
+    State variables to manage speech and text-to-speech features.
+  */
   const [speech, setSpeech] = useState(false);
   const [textToSpeech, setTextToSpeech] = useState(false);
 
+  /*
+    State variables to manage prompt, file, and chat history.
+  */
   const [prompt, setPrompt] = useState("");
   const [file, setFile] = useState(null);
   const [history, setHistory] = useState([
@@ -19,56 +33,75 @@ function App() {
   ]);
 
   /*
+    From ChatGPT
+  */
+  const sendAudio = async (audioBlob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob);
+    if (history.length !== 0) formData.append('history', JSON.stringify(history));
+    if (textToSpeech === true) formData.append('tts', "true");
+
+    const response = await fetch('http://localhost:8000/upload/speech/', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.text();
+
+    setHistory(history => [...history, { role: "Botty", text: data }]);
+  };
+
+  /*
+    From ChatGPT
+  */
+  const startRecording = async () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    const newRecorder = new Recorder(audioContext, {
+      type: 'audio/wav',
+    });
+
+    await newRecorder.init(micStream);
+    newRecorder.start();
+
+    setRecorder(newRecorder);
+    setStream(micStream);
+    setIsRecording(true);
+  };
+
+  /*
     Function to handle request.
   */
-  const submitPrompt = (event) => {
+  const submitPrompt = async (event) => {
     event.preventDefault();
 
     const formData = new FormData();
-    
-    if (prompt !== "") {
-      formData.append('prompt', prompt);
-    }
-    if (file !== null) {
-      formData.append('file', file);
-    }
-    if (history.length !== 0) {
-      formData.append('history', JSON.stringify(history));
-    }
-    if (textToSpeech === true) {
-      formData.append('tts', "true");
-    }
+    if (prompt !== "") formData.append('prompt', prompt);
+    if (file !== null) formData.append('file', file);
+    if (history.length !== 0) formData.append('history', JSON.stringify(history));
+    if (textToSpeech === true) formData.append('tts', "true");
+
 
     setHistory((history) => [...history, {role: "User", text: prompt}]);
     setFile(null);
     setPrompt("");
 
-    if (textToSpeech === true) {
-      console.log("Sending TTS");
-      fetch('http://localhost:8000/upload/text/', {
-        method: 'POST',
-        body: formData,
-      })
-        .then(res => res.blob())
-        .then(blob => {
-          const audioURL = URL.createObjectURL(blob);
-          const audio = new Audio(audioURL);
-          audio.play();
-        
-          setHistory(history => [...history, { role: "Botty", text: "Playing audio..." }]);
-      });
+    const response = await fetch('http://localhost:8000/upload/text', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (textToSpeech) {
+      const blob = await response.blob();
+      const audioURL = URL.createObjectURL(blob);
+      const audio = new Audio(audioURL);
+      audio.play();
+
+      setHistory(history => [...history, { role: "Botty", text: "Playing audio..." }]);
     } else {
-      console.log("Sending text");
-      fetch('http://localhost:8000/upload/text/', {
-        method: 'POST',
-        body: formData,
-      })
-        .then(response => response.json())
-        .then(data => data["message"])
-        .then(message => {
-          console.log("Response from server:", message);
-          setHistory((history) => [...history, { role: "Botty", text: message }]);
-        });
+      const data = await response.text();
+      setHistory((history) => [...history, { role: "Botty", text: data }]);
     }
   }
   
@@ -102,6 +135,16 @@ function App() {
     setSpeech(!speech);
   };
 
+  /*
+    From ChatGPT
+  */
+  const stopRecording = async () => {
+    const { blob } = await recorder.stop();
+    stream.getTracks().forEach(track => track.stop());
+    sendAudio(blob);
+    setIsRecording(false);
+  };
+
   return (
     <div className="root">
       <img src={Logo} className='logo' />
@@ -118,6 +161,7 @@ function App() {
             <img style={{ width: 40, height: 'auto' }} src={Mute} />
           )}
         </button>
+
         <button
           className='button'
           onClick={handleSpeech}
@@ -147,6 +191,10 @@ function App() {
           )}
         </div>
       </form>
+
+      <button onClick={isRecording ? stopRecording : startRecording}>
+        {isRecording ? "Stop Recording" : "Record Voice"}
+      </button>
     </div>
   );
 }
