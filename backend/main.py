@@ -53,13 +53,11 @@ def upload_text():
 
         data["history"] = history
         data["conversation"] = conversation
-    
-    data = {
-        "prompt": prompt,
-        "tts": tts,
-    }
 
-    if tts.lower() == "true":
+    data["prompt"] = prompt
+    data["tts"] = tts
+
+    if tts:
         url = "http://localhost:5001/generateSpeechFromText"
 
         def relay_audio_stream():

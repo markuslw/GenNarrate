@@ -40,16 +40,6 @@ def classify_prompt(prompt):
 
     return result["labels"][0]
 
-def text_to_speech(text):
-    pipeline = KPipeline(lang_code='a')
-    generator = pipeline(text, voice='af_bella')
-
-    for _, _, audio in generator:
-        audio_buffer = io.BytesIO()
-        sf.write(audio_buffer, audio, 24000, format='WAV')
-        audio_buffer.seek(0)
-        yield audio_buffer
-
 @app.route("/")
 def index():
     return jsonify({"message": "Inference API is up and running"})
@@ -74,7 +64,7 @@ def generate_speech_from_text():
 
     def generate_audio_stream():
         pipeline = KPipeline(lang_code='a')
-        generator = pipeline(response, voice='af_bella')
+        generator = pipeline(response, voice='af_heart')
 
         for _, _, audio in generator:
             audio_buffer = io.BytesIO()

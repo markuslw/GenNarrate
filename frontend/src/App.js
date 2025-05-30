@@ -40,10 +40,10 @@ function App() {
     setPrompt("");
 
     if (TTS === true) {
-      fetch('http://localhost:8000/ttsAudio', {
+      console.log("Sending TTS");
+      fetch('http://localhost:8000/upload/text/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: "Hello world" })
+        body: formData,
       })
         .then(res => res.blob())
         .then(blob => {
@@ -54,6 +54,7 @@ function App() {
           setHistory(history => [...history, { role: "Botty", text: "Playing audio..." }]);
       });
     } else {
+      console.log("Sending text");
       fetch('http://localhost:8000/upload/text/', {
         method: 'POST',
         body: formData,
