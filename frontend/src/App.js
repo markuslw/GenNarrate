@@ -10,13 +10,6 @@ import Recorder from 'recorder-js';
 function App() {
 
   /*
-    From ChatGPT
-  */
-  const [isRecording, setIsRecording] = useState(false);
-  const [recorder, setRecorder] = useState(null);
-  const [stream, setStream] = useState(null);
-
-  /*
     State variables to manage speech and text-to-speech features.
   */
   const [speech, setSpeech] = useState(false);
@@ -31,6 +24,13 @@ function App() {
     { role: "User", text: "Hello Botty!" },
     {role: "Botty", text: "Hello User!"}
   ]);
+
+  /*
+    From ChatGPT
+  */
+  const [isRecording, setIsRecording] = useState(false);
+  const [recorder, setRecorder] = useState(null);
+  const [stream, setStream] = useState(null);
 
   /*
     From ChatGPT
@@ -68,6 +68,16 @@ function App() {
     setRecorder(newRecorder);
     setStream(micStream);
     setIsRecording(true);
+  };
+
+  /*
+    From ChatGPT
+  */
+  const stopRecording = async () => {
+    const { blob } = await recorder.stop();
+    stream.getTracks().forEach(track => track.stop());
+    sendAudio(blob);
+    setIsRecording(false);
   };
 
   /*
@@ -133,16 +143,7 @@ function App() {
   */
   const handleSpeech = () => {
     setSpeech(!speech);
-  };
-
-  /*
-    From ChatGPT
-  */
-  const stopRecording = async () => {
-    const { blob } = await recorder.stop();
-    stream.getTracks().forEach(track => track.stop());
-    sendAudio(blob);
-    setIsRecording(false);
+    isRecording ? stopRecording() : startRecording();
   };
 
   return (
@@ -156,9 +157,9 @@ function App() {
           onClick={handleTextToSpeech}
           style={textToSpeech ? { backgroundColor: '#3b82f6' } : {}} >
           {textToSpeech ? (
-            <img style={{ width: 40, height: 'auto' }} src={Open} />
+            <img style={{ width: 40, height: 'auto' }} src={Speaker} />
           ) : (
-            <img style={{ width: 40, height: 'auto' }} src={Mute} />
+            <img style={{ width: 40, height: 'auto' }} src={Typing} />
           )}
         </button>
 
@@ -167,9 +168,9 @@ function App() {
           onClick={handleSpeech}
           style={speech ? { backgroundColor: '#3b82f6' } : {}} >
           {speech ? (
-            <img style={{ width: 40, height: 'auto' }} src={Speaker} />
+            <img style={{ width: 40, height: 'auto' }} src={Open} />
           ) : (
-            <img style={{ width: 40, height: 'auto' }} src={Typing} />
+            <img style={{ width: 40, height: 'auto' }} src={Mute} />
           )}
         </button>
       </div>
@@ -191,10 +192,6 @@ function App() {
           )}
         </div>
       </form>
-
-      <button onClick={isRecording ? stopRecording : startRecording}>
-        {isRecording ? "Stop Recording" : "Record Voice"}
-      </button>
     </div>
   );
 }
