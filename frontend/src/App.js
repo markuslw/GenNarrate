@@ -2,11 +2,15 @@ import './App.css';
 import Logo from './logo.png';
 import Mute from './mute.png';
 import Open from './open.png';
+import Typing from './typing.png';
+import Speaker from './speaker.png';
 import React, { useState } from 'react';
 
 function App() {
 
-  const [TTS, setTTS] = useState(false);
+  const [speech, setSpeech] = useState(false);
+  const [textToSpeech, setTextToSpeech] = useState(false);
+
   const [prompt, setPrompt] = useState("");
   const [file, setFile] = useState(null);
   const [history, setHistory] = useState([
@@ -31,7 +35,7 @@ function App() {
     if (history.length !== 0) {
       formData.append('history', JSON.stringify(history));
     }
-    if (TTS === true) {
+    if (textToSpeech === true) {
       formData.append('tts', "true");
     }
 
@@ -39,7 +43,7 @@ function App() {
     setFile(null);
     setPrompt("");
 
-    if (TTS === true) {
+    if (textToSpeech === true) {
       console.log("Sending TTS");
       fetch('http://localhost:8000/upload/text/', {
         method: 'POST',
@@ -87,8 +91,15 @@ function App() {
   /*
     Function to handle TTS toggle.
   */
-  const handleTTS = () => {
-    setTTS(!TTS);
+  const handleTextToSpeech = () => {
+    setTextToSpeech(!textToSpeech);
+  };
+
+  /*
+    Function to handle speaking toggle.
+  */
+  const handleSpeech = () => {
+    setSpeech(!speech);
   };
 
   return (
@@ -96,13 +107,28 @@ function App() {
       <img src={Logo} className='logo' />
       <h1>GenNarrate</h1>
 
-      <button className='ttsButton' onClick={handleTTS} style={TTS ? { backgroundColor: '#3b82f6' } : {}} >
-        {TTS ? (
-          <img style={{ width: 40, height: 'auto' }} src={Open} />
-        ) : (
-          <img style={{ width: 40, height: 'auto' }} src={Mute} />
-        )}
-      </button>
+      <div className='buttons-container'>
+        <button
+          className='button'
+          onClick={handleTextToSpeech}
+          style={textToSpeech ? { backgroundColor: '#3b82f6' } : {}} >
+          {textToSpeech ? (
+            <img style={{ width: 40, height: 'auto' }} src={Open} />
+          ) : (
+            <img style={{ width: 40, height: 'auto' }} src={Mute} />
+          )}
+        </button>
+        <button
+          className='button'
+          onClick={handleSpeech}
+          style={speech ? { backgroundColor: '#3b82f6' } : {}} >
+          {speech ? (
+            <img style={{ width: 40, height: 'auto' }} src={Speaker} />
+          ) : (
+            <img style={{ width: 40, height: 'auto' }} src={Typing} />
+          )}
+        </button>
+      </div>
 
       <div className="chatHistory">
         {history.map((message, index) => (

@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-from flask import Flask, request, jsonify, send_file, Response, stream_with_context
-import os
+
+# Flask and communication libraries
 import io
+from flask import Flask, request, jsonify, send_file, Response, stream_with_context
 
+# General AI models imports
 import torch
+from transformers import pipeline
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+# LLM imports
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
+# Text-to-Speech imports
 from kokoro import KPipeline
 from IPython.display import Audio
 import soundfile as sf
 
-BASE_DIR = os.path.dirname(__file__)
-speaker_wav = os.path.join(BASE_DIR, "female.wav")
+# Automatic Speech Recognition imports
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+from datasets import load_dataset
 
 if not torch.cuda.is_available():
     raise RuntimeError("No CUDA/GPU")
@@ -25,6 +31,15 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.float16
 )
 model.eval()
+
+speech_model_id = "openai/whisper-large-v3"
+speech_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    speech_model_id, 
+    torch_dtype=torch.float16, 
+    low_cpu_mem_usage=True, 
+    use_safetensors=True
+)
+speech_model.to("cuda:0")
 
 classifier = pipeline(
     "zero-shot-classification",
@@ -43,6 +58,13 @@ def classify_prompt(prompt):
 @app.route("/")
 def index():
     return jsonify({"message": "Inference API is up and running"})
+
+@app.route("/recognizeSpeechFromText", methods=["POST"])
+def recognize_speech_from_text():
+    data = request.get_json()
+
+    speech = data.get("speech")
+
 
 @app.route("/generateSpeechFromText", methods=["POST"])
 def generate_speech_from_text():

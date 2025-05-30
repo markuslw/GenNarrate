@@ -27,7 +27,15 @@ code {
   margin-top: 20px;
 }
 
-.ttsButton {
+.button-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.button {
+  margin: 10px;
   padding: 10px;
   border-radius: 10px;
   border: none;
