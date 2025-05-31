@@ -77,6 +77,29 @@ def upload_text():
 
         return Response(text_response, mimetype='text/plain')
     
+@app.route("/upload/chunk/", methods=["POST"])
+def upload_chunk():
+    prompt = request.form.get("prompt")
+    history = request.form.get("history")
+    tts = request.form.get("tts")
+
+    data = {}
+    if history:
+        create_conversation(data, prompt, history)
+    data["prompt"] = prompt
+
+    url = "http://localhost:5001/narrate"
+
+    def save_audio_stream():
+        with requests.post(url, data=data, stream=True) as response:
+            for chunk in response.iter_content(chunk_size=4096):
+                if chunk:
+                    with open("output.wav", "ab") as f:
+                        f.write(chunk)
+    save_audio_stream()
+    
+    return Response("Chunk stored", mimetype='text/plain')
+    
 @app.route("/upload/file/", methods=["POST"])
 def upload_files():
     media = request.form.get("media")

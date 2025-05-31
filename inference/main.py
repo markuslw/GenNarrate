@@ -174,5 +174,11 @@ def text_to_text():
 
     return Response(response, mimetype='text/plain')
 
+@app.route("/narrate", methods=["POST"])
+def narrorate_text():
+    prompt = request.form.get("prompt")
+
+    return Response(stream_with_context(generate_audio_stream(prompt)), mimetype='audio/wav')
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
