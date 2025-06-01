@@ -34,62 +34,91 @@ if not torch.cuda.is_available():
     raise RuntimeError("No CUDA/GPU")
 
 # LLM
-model_id = "deepseek-ai/deepseek-llm-7b-chat"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    device_map="auto",
-    torch_dtype=torch.float16
+llm_model_id = "deepseek-ai/deepseek-llm-7b-chat"
+llm_tokenizer = AutoTokenizer.from_pretrained(llm_model_id)
+llm_model = AutoModelForCausalLM.from_pretrained(
+    llm_model_id,
+    torch_dtype=torch.float16,
+    low_cpu_mem_usage=True
 )
-model.eval()
+llm_model.to("cuda:0")      # Move model to GPU
+llm_model.eval()            # Set model to evaluation mode
+
+# Coder
+coder_model_id = "deepseek-ai/DeepSeek-Coder-V2-Instruct"
+coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
+coder_model = AutoModelForCausalLM.from_pretrained(
+    coder_model_id,
+    torch_dtype=torch.float16,
+    low_cpu_mem_usage=True,
+    trust_remote_code=True
+)
+coder_model.to("cuda:0")    # Move model to GPU
+coder_model.eval()          # Set model to evaluation mode
 
 # ASR
 speech_model_id = "openai/whisper-large-v3"
+speech_processor = AutoProcessor.from_pretrained(speech_model_id)
 speech_model = AutoModelForSpeechSeq2Seq.from_pretrained(
     speech_model_id, 
-    torch_dtype=torch.float16, 
+    torch_dtype=torch.float16,
     low_cpu_mem_usage=True, 
     use_safetensors=True
 )
-speech_model.to("cuda:0")
-speech_processor = AutoProcessor.from_pretrained(speech_model_id)
+speech_model.to("cuda:0")   # Move model to GPU
+speech_model.eval()         # Set model to evaluation mode
 
 # ZSC 
+classifier_model_id = "facebook/bart-large-mnli"
 classifier = pipeline(
     "zero-shot-classification",
-    model="facebook/bart-large-mnli",
-    device=0
+    model=classifier_model_id,
+    device=torch.device("cuda:0").index
 )
 
 # RAG
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
+rag_model_id = "all-MiniLM-L6-v2"
+embedder = SentenceTransformer(rag_model_id)
+embedder.to("cuda:0")
 
 ## ChromaDB client and collection
-chroma_client = chromadb.Client(Settings())
+chroma_client = chromadb.PersistentClient(path="/database")
 chroma_collection = chroma_client.get_or_create_collection(name="documents")
 
 """
     This function classifies the prompt into one of the labels.
 """
 def classify_prompt(prompt):
-    candidate_labels = ["text_summary", "image_generation", "text_to_text"]
-    result = classifier(prompt, candidate_labels)
+    candidate_labels = [
+        "code_generation",
+        "text_answer",
+        "math_explanation",
+        "data_analysis",
+    ]
 
-    return result["labels"][0]
+    result = classifier(prompt, candidate_labels)
+    top_label = result["labels"][0]
+
+    return top_label
 
 """
     This function retreives relevant embedded data
     from ChromaDB based on embedded user prompt.
 """
 def retrieve_relevant_context(prompt, k=3):
+    # Embeds the prompt using the embedder to match prompt with embeddings
     query_embedding = embedder.encode([prompt])[0].tolist()
 
+    # Query the ChromaDB database for top k documents
     results = chroma_collection.query(
         query_embeddings=[query_embedding],
         n_results=k
     )
 
-    return "\n\n".join(results["documents"][0])
+    # Separate top hits with "\n\n"
+    response = "\n\n".join(results["documents"][0])
+
+    return response
 
 """
     This function generates a response based on the conversation history
@@ -110,11 +139,22 @@ def generate_response(conversation, prompt):
 
         User: {prompt}
         Botty:"""
+    
+    label = classify_prompt(prompt)
 
-    inputs = tokenizer(full_prompt, return_tensors="pt").to(model.device)
+    print(f"Classified prompt as: {label}", flush=True)
+
+    if label == "text_answer":
+        response_model = llm_model
+        response_tokenizer = llm_tokenizer
+    else:
+        response_model = coder_model
+        response_tokenizer = coder_tokenizer
+
+    inputs = response_tokenizer(full_prompt, return_tensors="pt").to(response_model.device)
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=600, temperature=0.7)
-    generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        outputs = response_model.generate(**inputs, max_new_tokens=600, temperature=0.7)
+    generated = response_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     if "Botty:" in generated:
         response = generated.rsplit("Botty:", 1)[-1].strip()
@@ -240,7 +280,7 @@ def embed_text():
     data = request.get_json()
     chunks = data["texts"]
 
-    embeddings = embedder.encode(chunks).tolist()  # Convert to JSON-safe format
+    embeddings = embedder.encode(chunks).tolist()
 
     return jsonify({"embeddings": embeddings})
 

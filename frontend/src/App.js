@@ -1,9 +1,9 @@
 import './App.css';
-import Logo from './logo.png';
-import Mute from './mute.png';
-import Open from './open.png';
-import Typing from './typing.png';
-import Speaker from './speaker.png';
+import Logo from './imgs/logo.png';
+import Mute from './imgs/mute.png';
+import Open from './imgs/open.png';
+import Typing from './imgs/typing.png';
+import Speaker from './imgs/speaker.png';
 import React, { useState } from 'react';
 import Recorder from 'recorder-js';
 
@@ -21,8 +21,8 @@ function App() {
   const [prompt, setPrompt] = useState("");
   const [file, setFile] = useState(null);
   const [history, setHistory] = useState([
-    { role: "User", text: "Hello Botty!" },
-    {role: "Botty", text: "Hello User!"}
+    { role: "User", content: "Hello Botty!" },
+    {role: "Botty", content: "Hello User!"}
   ]);
 
   /*
@@ -44,11 +44,15 @@ function App() {
     const response = await fetch('http://localhost:8000/upload/speech/', {
       method: 'POST',
       body: formData,
-    });
+    })
+      .catch(error => {
+        console.error("Unexpected error:", error);
+      });
 
-    const data = await response.text();
-
-    setHistory(history => [...history, { role: "Botty", text: data }]);
+    if (response) {
+      const data = await response.text();
+      setHistory(history => [...history, { role: "Botty", content: data }]);
+    }
   };
 
   /*
@@ -102,18 +106,23 @@ function App() {
     const response = await fetch('http://localhost:8000/upload/text', {
       method: 'POST',
       body: formData,
-    });
+    })
+      .catch(error => {
+        console.error("Unexpected error:", error);
+      });
+    
+    if (response) {
+      if (textToSpeech) {
+        const blob = await response.blob();
+        const audioURL = URL.createObjectURL(blob);
+        const audio = new Audio(audioURL);
+        audio.play();
 
-    if (textToSpeech) {
-      const blob = await response.blob();
-      const audioURL = URL.createObjectURL(blob);
-      const audio = new Audio(audioURL);
-      audio.play();
-
-      setHistory(history => [...history, { role: "Botty", text: "Playing audio..." }]);
-    } else {
-      const data = await response.text();
-      setHistory((history) => [...history, { role: "Botty", text: data }]);
+        setHistory(history => [...history, { role: "Botty", content: "Playing audio..." }]);
+      } else {
+        const data = await response.text();
+        setHistory((history) => [...history, { role: "Botty", content: data }]);
+      }
     }
   }
 
@@ -133,7 +142,7 @@ function App() {
     });
 
     const data = await response.text();
-    setHistory((history) => [...history, { role: "Botty", text: data }]);
+    setHistory((history) => [...history, { role: "Botty", content: data }]);
   }
 
   
@@ -170,7 +179,7 @@ function App() {
 
   return (
     <div className="root">
-      <img src={Logo} className='logo' />
+      <img alt="" src={Logo} className='logo' />
       <h1>GenNarrate</h1>
 
       <div className='buttons-container'>
@@ -179,9 +188,9 @@ function App() {
           onClick={handleTextToSpeech}
           style={textToSpeech ? { backgroundColor: '#3b82f6' } : {}} >
           {textToSpeech ? (
-            <img style={{ width: 40, height: 'auto' }} src={Speaker} />
+            <img alt="" style={{ width: 40, height: 'auto' }} src={Speaker} />
           ) : (
-            <img style={{ width: 40, height: 'auto' }} src={Typing} />
+            <img alt="" style={{ width: 40, height: 'auto' }} src={Typing} />
           )}
         </button>
 
@@ -190,17 +199,17 @@ function App() {
           onClick={handleSpeech}
           style={speech ? { backgroundColor: '#3b82f6' } : {}} >
           {speech ? (
-            <img style={{ width: 40, height: 'auto' }} src={Open} />
+            <img alt="" style={{ width: 40, height: 'auto' }} src={Open} />
           ) : (
-            <img style={{ width: 40, height: 'auto' }} src={Mute} />
+            <img alt="" style={{ width: 40, height: 'auto' }} src={Mute} />
           )}
         </button>
       </div>
 
       <div className="chatHistory">
         {history.map((message, index) => (
-          <p key={index} className={message.role === "User" ? "right" : "left"}>
-            {message.text}
+          <p key={index} className={message.role === "User" ? "message right" : "message left"}>
+            {message.content}
           </p>
         ))}
       </div>
