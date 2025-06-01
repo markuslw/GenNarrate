@@ -26,14 +26,14 @@ function App() {
   ]);
 
   /*
-    From ChatGPT
+    State variables to manage audio recording.
   */
   const [isRecording, setIsRecording] = useState(false);
   const [recorder, setRecorder] = useState(null);
   const [stream, setStream] = useState(null);
 
   /*
-    From ChatGPT
+    Function to send audio data to the server.
   */
   const sendAudio = async (audioBlob) => {
     const formData = new FormData();
@@ -52,7 +52,7 @@ function App() {
   };
 
   /*
-    From ChatGPT
+    Function to start audio recording.
   */
   const startRecording = async () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -71,7 +71,7 @@ function App() {
   };
 
   /*
-    From ChatGPT
+    Function to stop audio recording and send the recorded audio to the server.
   */
   const stopRecording = async () => {
     const { blob } = await recorder.stop();
@@ -86,15 +86,17 @@ function App() {
   const submitPrompt = async (event) => {
     event.preventDefault();
 
+    if (file !== null) {
+      submitFile(event);
+      return;
+    }
+
     const formData = new FormData();
     if (prompt !== "") formData.append('prompt', prompt);
-    if (file !== null) formData.append('file', file);
     if (history.length !== 0) formData.append('history', JSON.stringify(history));
     if (textToSpeech === true) formData.append('tts', "true");
 
-
     setHistory((history) => [...history, {role: "User", text: prompt}]);
-    setFile(null);
     setPrompt("");
 
     const response = await fetch('http://localhost:8000/upload/text', {
@@ -114,6 +116,26 @@ function App() {
       setHistory((history) => [...history, { role: "Botty", text: data }]);
     }
   }
+
+  /*
+    Function to handle file upload.
+  */
+  const submitFile = async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData();
+    if (file !== null) formData.append('file', file);
+    setFile(null);
+
+    const response = await fetch('http://localhost:8000/upload/file', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.text();
+    setHistory((history) => [...history, { role: "Botty", text: data }]);
+  }
+
   
   /*
     Function to handle text input changes.

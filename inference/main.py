@@ -21,6 +21,15 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 import torchaudio
 import torchaudio.transforms as T
 
+# RAG imports
+import fitz
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import chromadb
+from chromadb.config import Settings
+
 if not torch.cuda.is_available():
     raise RuntimeError("No CUDA/GPU")
 
@@ -52,6 +61,13 @@ classifier = pipeline(
     device=0
 )
 
+# RAG
+embedder = SentenceTransformer("all-MiniLM-L6-v2")
+
+## ChromaDB client and collection
+chroma_client = chromadb.Client(Settings())
+chroma_collection = chroma_client.get_or_create_collection(name="documents")
+
 """
     This function classifies the prompt into one of the labels.
 """
@@ -62,11 +78,40 @@ def classify_prompt(prompt):
     return result["labels"][0]
 
 """
+    This function retreives relevant embedded data
+    from ChromaDB based on embedded user prompt.
+"""
+def retrieve_relevant_context(prompt, k=3):
+    query_embedding = embedder.encode([prompt])[0].tolist()
+
+    results = chroma_collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k
+    )
+
+    return "\n\n".join(results["documents"][0])
+
+"""
     This function generates a response based on the conversation history
     including the latest user input.
 """
-def generate_response(conversation):
-    inputs = tokenizer(conversation, return_tensors="pt").to(model.device)
+def generate_response(conversation, prompt):
+    context = retrieve_relevant_context(prompt)
+
+    full_prompt = f"""
+        You are a helpful assistant. Use the following 
+        context to help answer the user's question.
+
+        Context:
+        {context}
+
+        Conversation so far:
+        {conversation}
+
+        User: {prompt}
+        Botty:"""
+
+    inputs = tokenizer(full_prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=600, temperature=0.7)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -97,7 +142,23 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return jsonify({"message": "Inference API is up and running"})
+    allocated = torch.cuda.memory_allocated() / (1024 ** 2)
+    reserved = torch.cuda.memory_reserved() / (1024 ** 2)
+
+    response = f"""
+    API running with alloc {allocated}MB and reserved {reserved}MB
+    """
+
+    return Response(response, mimetype='text/plain')
+
+@app.route("/healthcheck", methods=["GET"])
+def healthcheck():
+    allocated = torch.cuda.memory_allocated() / (1024 ** 2)
+    reserved = torch.cuda.memory_reserved() / (1024 ** 2)
+    return jsonify({
+        "cuda_memory_allocated_mb": allocated,
+        "cuda_memory_reserved_mb": reserved
+    })
 
 """
     This endpoint is used to reccognize text from input speech.
@@ -147,7 +208,7 @@ def recognize_text_from_speech():
         Generates a response from the conversation history
         and decides whether to return text or text-to-speech.
     """
-    response = generate_response(conversation)
+    response = generate_response(conversation, prompt)
 
     if tts:
         return Response(stream_with_context(generate_audio_stream(response)), mimetype='audio/wav')
@@ -160,7 +221,7 @@ def generate_speech_from_text():
     history = request.form.get("history")
     conversation = request.form.get("conversation")
 
-    response = generate_response(conversation)
+    response = generate_response(conversation, prompt)
 
     return Response(stream_with_context(generate_audio_stream(response)), mimetype='audio/wav')
 
@@ -170,9 +231,42 @@ def text_to_text():
     history = request.form.get("history")
     conversation = request.form.get("conversation")
 
-    response = generate_response(conversation)
+    response = generate_response(conversation, prompt)
 
     return Response(response, mimetype='text/plain')
+
+@app.route("/generateEmbeddings", methods=["POST"])
+def embed_text():
+    data = request.get_json()
+    chunks = data["texts"]
+
+    embeddings = embedder.encode(chunks).tolist()  # Convert to JSON-safe format
+
+    return jsonify({"embeddings": embeddings})
+
+@app.route("/indexEmbeddings", methods=["POST"])
+def store_embeddings():
+    data = request.get_json()
+    chunks = data["chunks"]
+    embeddings = data["embeddings"]
+    doc_id = data["doc_id"]
+
+    ids = []
+    metadatas = []
+
+    for i in range(len(chunks)):
+        ids.append(f"{doc_id}-chunk-{i}")
+        metadatas.append({"doc_id": doc_id})
+
+    chroma_collection.add(
+        documents=chunks,
+        embeddings=embeddings,
+        ids=ids,
+        metadatas=metadatas
+    )
+    
+    return Response("Embeddings stored successfully", status=200, mimetype='text/plain')
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

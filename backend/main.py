@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
-import fitz
 import requests
 import json
 from pymongo import MongoClient
+
+# RAG imports
+import fitz
+import faiss
+import numpy as np
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 def create_conversation(data, prompt, history):
     decoded_history = json.loads(history)
@@ -25,7 +30,7 @@ CORS(app)
 
 @app.route("/")
 def index():
-    return jsonify({"message": "Backend API is up and running"})
+    return Response("API is running", mimetype='text/plain')
 
 @app.route("/upload/speech/", methods=["POST"])
 def upload_speech():
@@ -72,29 +77,50 @@ def upload_text():
     
     else:
         url = "http://localhost:5001/generateTextFromText"
-        response = requests.post(url, json=data)
+        response = requests.post(url, data=data)
         text_response = response.text
 
         return Response(text_response, mimetype='text/plain')
-    
+
 @app.route("/upload/file/", methods=["POST"])
-def upload_files():
-    media = request.form.get("media")
+def upload_file():
+    file = request.files.get("file")
     
     text = ""
-    with fitz.open(stream=media, filetype="pdf") as doc:
+    with fitz.open(stream=file.read(), filetype="pdf") as doc:
         for page in doc:
             text += page.get_text() + "\n"
 
-    url = "http://localhost:5001/generateTextFromText"
+    """
+        RAG chunking and embedding
+    """
+    def chunk_document():
+        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        return splitter.split_text(text)
+    chunks = chunk_document()
+
+    url = "http://localhost:5001/embedText"
     data = {
-        "text": text,
+        "texts": chunks,
     }
+    response = requests.post(url, json=data)
+    embeddings = response.json().get("embeddings")
 
-    response = requests.post(url, data=data)
-    text_response = response.text
+    embeddings_array = np.array(embeddings)
+    index = faiss.IndexFlatL2(embeddings_array.shape[1])
+    index.add(embeddings_array)
 
-    return Response(text_response, mimetype='text/plain')
+    url = "http://localhost:5001/storeEmbeddings"
+    data = {
+        "chunks": chunks,
+        "embeddings": embeddings,
+        "doc_id": "96837596_doc",
+    }
+    response = requests.post(url, json=data)
+    if response.status_code != 200:
+        return Response("Failed to store file", status=500, mimetype='text/plain')
+    else:
+        return Response("Successfully stored file", status=200, mimetype='text/plain')
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8000)
