@@ -4,12 +4,14 @@ from flask_cors import CORS
 import requests
 import json
 from pymongo import MongoClient
-
+from openai import OpenAI
+import re
 # RAG imports
 import fitz
 import faiss
 import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+client = OpenAI(api_key="!!!")
 
 def create_conversation(data, prompt, history):
     decoded_history = json.loads(history)
@@ -122,5 +124,106 @@ def upload_file():
     else:
         return Response("Successfully stored file", status=200, mimetype='text/plain')
 
+
+
+"""
+    Cleans a chunk from any newline characters.
+    Returns a 'clean' chunk
+"""
+def clean_chunk(text):
+    text = re.sub(r"-\s*\n\s*", "", text)
+    text = re.sub(r"\s*\n\s*", " ", text)
+    text = re.sub(r" {2,}", " ", text)
+    return text.strip()
+
+
+"""
+    Receives a document worth of text, sends it to GPT4 and receives the document in JSON formatted chunks
+    Returns a dictionary with all chunks received from the GPT model.
+"""
+
+def chunk_text_via_gpt(full_text):
+    prompt = f"""
+You are a narrator AI. Your task is to segment the following document into narratable chunks.
+
+Each chunk should:
+- Be coherent and self-contained
+- Be around 300–500 words (unless a natural section is shorter)
+- Preserve logical or narrative boundaries (like paragraphs or scenes)
+
+Respond only with a JSON array of strings, where each string is a chunk of the original text.
+
+Text:
+\"\"\"
+{full_text}
+\"\"\"
+"""
+    try:
+        response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3
+            )
+    except Exception as e:
+        raise RuntimeError(f"GPT chunking request failed: {e}")
+    
+
+    output_text = response.choices[0].message.content
+
+    # Strip code fences if present
+    output_text_clean = (
+        output_text
+        .strip()
+        .removeprefix("```json")
+        .removesuffix("```")
+        .strip()
+    )
+    try:
+        chunk_list = json.loads(output_text_clean)
+        if not isinstance(chunk_list, list):
+            raise ValueError("Expected a JSON array of strings.")
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse GPT output as JSON: {e}")
+    
+    out_dict: dict[int, str] = {}
+    for i, chunk_text in enumerate(chunk_list):
+        if not isinstance(chunk_text, str):
+            raise RuntimeError(f"Chunk #{i} is not a string.")
+        chunk_text = clean_chunk(chunk_text)
+        out_dict[i] = chunk_text.strip()
+    return out_dict
+
+"""
+    Supposed to send a chunk to the inference server and receive and store
+    the audio file it receives, but does for some reason not work...
+"""
+def send_chunk_for_narration(text, number):
+    data = {}
+    data["prompt"] = text
+    url = "http://localhost:5001/narrateText"
+
+    def save_audio_stream():
+            with requests.post(url, data=data, stream=True) as response:
+                for chunk in response.iter_content(chunk_size=4096):
+                    if chunk:
+                        with open(f"output_{number}.wav", "ab") as f:
+                            f.write(chunk)
+    try:    
+        save_audio_stream()
+    except (requests.exceptions.RequestException, RuntimeError) as e:
+        raise RuntimeError(f"TTS failed for chunk {number}: {e}")
+
+
+    return 0
+
+
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    #app.run(debug=True, host="0.0.0.0", port=8000)
+    #doc = fitz.open("report.pdf")
+    #full_text = "".join(page.get_text() for page in doc)
+    #chunks = chunk_text_via_gpt(full_text)
+    #print(chunks)
+    send_chunk_for_narration("This is a test to see if i get it to work!", 0)
