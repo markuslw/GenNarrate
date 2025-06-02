@@ -22,11 +22,16 @@ import torchaudio
 import torchaudio.transforms as T
 
 # RAG imports
+import fitz
+import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
 from chromadb.config import Settings
 
+# timing
+import time
 if not torch.cuda.is_available():
     raise RuntimeError("No CUDA/GPU")
 
@@ -41,20 +46,9 @@ llm_model = AutoModelForCausalLM.from_pretrained(
 llm_model.to("cuda:0")      # Move model to GPU
 llm_model.eval()            # Set model to evaluation mode
 
-allocated = torch.cuda.memory_allocated() / (1024 ** 2)
-reserved = torch.cuda.memory_reserved() / (1024 ** 2)
-
 # Coder
-#coder_model_id = "TroyDoesAI/MermaidStable3B"
-#coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
-#coder_model = AutoModelForCausalLM.from_pretrained(
-#    coder_model_id,
-#    torch_dtype=torch.float16,
-#    low_cpu_mem_usage=True,
-#    trust_remote_code=True
-#)
-#coder_model.to("cuda:0")    # Move model to GPU
-#coder_model.eval()          # Set model to evaluation mode
+
+
 
 # ASR
 speech_model_id = "openai/whisper-large-v3"
@@ -82,7 +76,7 @@ embedder = SentenceTransformer(rag_model_id)
 embedder.to("cuda:0")
 
 ## ChromaDB client and collection
-chroma_client = chromadb.Client(Settings())
+chroma_client = chromadb.PersistentClient(path="./database")
 chroma_collection = chroma_client.get_or_create_collection(name="documents")
 
 """
@@ -90,19 +84,10 @@ chroma_collection = chroma_client.get_or_create_collection(name="documents")
 """
 def classify_prompt(prompt):
     candidate_labels = [
-        # Routes to MermaidStable3B
-        "flowchart_diagram",
-        "uml_diagram",
-        "sequence_diagram",
-        "state_machine",
-        "graph_visualization",
-
-        # Routes to LLM
-        "text_explanation",
-        "math_reasoning",
-        "data_insight",
-        "general_question",
-        "code_explanation",
+        "code_generation",
+        "text_answer",
+        "math_explanation",
+        "data_analysis",
     ]
 
     result = classifier(prompt, candidate_labels)
@@ -134,35 +119,44 @@ def retrieve_relevant_context(prompt, k=3):
     including the latest user input.
 """
 def generate_response(conversation, prompt):
+    start_time = time.time()
     context = retrieve_relevant_context(prompt)
+
+    full_prompt = f"""
+        You are a helpful assistant. Use the following 
+        context to help answer the user's question.
+
+        Context:
+        {context}
+
+        Conversation so far:
+        {conversation}
+
+        User: {prompt}
+        Botty:"""
+    
     label = classify_prompt(prompt)
 
-    if (
-        label == "text_explaination" or \
-        label == "general_question" or \
-        label == "code_explanation" or \
-        label == "math_reasoning" or \
-        label == "data_insight"
-        ):
-        simple_label = "text"
+    print(f"Classified prompt as: {label}", flush=True)
+
+    if label == "text_answer":
         response_model = llm_model
         response_tokenizer = llm_tokenizer
     else:
-        simple_label = "mermaid"
-        response_model = llm_model
-        response_tokenizer = llm_tokenizer
-
-    full_prompt = f"Context:\n{context}\nConversation so far:\n{conversation}\nUser: {prompt}\nBotty:"
-
+        pass
+    
     inputs = response_tokenizer(full_prompt, return_tensors="pt").to(response_model.device)
     with torch.no_grad():
         outputs = response_model.generate(**inputs, max_new_tokens=600, temperature=0.7)
+    duration = time.time() - start_time
+    print(f"LLM inference time: {duration:.2f} seconds", flush=True)
     generated = response_tokenizer.decode(outputs[0], skip_special_tokens=True)
-
+    
     if "Botty:" in generated:
         response = generated.rsplit("Botty:", 1)[-1].strip()
     else:
         response = generated.strip()
+
     
     return response
 
@@ -173,14 +167,16 @@ def generate_response(conversation, prompt):
 """
 def generate_audio_stream(response):
     pipeline = KPipeline(lang_code='a')
+    start_time = time.time()
     generator = pipeline(response, voice='af_heart')
+    duration = time.time() - start_time
+    print(f"TTS generation time: {duration:.2f} seconds", flush=True)
 
     for _, _, audio in generator:
         audio_buffer = io.BytesIO()
         sf.write(audio_buffer, audio, 24000, format='WAV')
         audio_buffer.seek(0)
         yield audio_buffer.read()
-
 app = Flask(__name__)
 
 @app.route("/")
@@ -188,7 +184,9 @@ def index():
     allocated = torch.cuda.memory_allocated() / (1024 ** 2)
     reserved = torch.cuda.memory_reserved() / (1024 ** 2)
 
-    response = f"alloc {allocated}MB and reserved {reserved}MB\n"
+    response = f"""
+    API running with alloc {allocated}MB and reserved {reserved}MB
+    """
 
     return Response(response, mimetype='text/plain')
 
@@ -241,6 +239,7 @@ def recognize_text_from_speech():
         Recongizes the prompt from the speech and appends
         it to the conversation history.
     """
+
     result = pipeline_asr(waveform_np)
     prompt = result["text"]
     conversation += f"User: {prompt}\n"
@@ -285,9 +284,6 @@ def embed_text():
 
     return jsonify({"embeddings": embeddings})
 
-"""
-    Endpoint for storing embeddings in ChromaDB.
-"""
 @app.route("/indexEmbeddings", methods=["POST"])
 def store_embeddings():
     data = request.get_json()
@@ -311,6 +307,7 @@ def store_embeddings():
     
     return Response("Embeddings stored successfully", status=200, mimetype='text/plain')
 
+
 """
     Endpoint for narrating text sent.
     Takes text as input and returns a audio .wav file.
@@ -318,8 +315,11 @@ def store_embeddings():
 @app.route("/narrateText", methods=["POST"])
 def narrate_text():
     prompt = request.form.get("prompt")
-
+    print(prompt, flush=True)
     return Response(stream_with_context(generate_audio_stream(prompt)), mimetype='audio/wav')
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

@@ -4,7 +4,6 @@ from flask_cors import CORS
 import requests
 import json
 from pymongo import MongoClient
-
 import uuid
 
 # RAG imports
@@ -42,6 +41,7 @@ def index():
 
 @app.route("/upload/speech/", methods=["POST"])
 def upload_speech():
+    
     speech = request.files.get("audio")
     history = request.form.get("history")
     tts = request.form.get("tts")
@@ -54,14 +54,14 @@ def upload_speech():
 
     files = {"audio": (speech.filename, speech.stream, speech.mimetype)}
 
-    url = "http://localhost:5001/recognizeTextFromSpeech"
+    url = "http://localhost:5000/recognizeTextFromSpeech"
 
     if tts:
         return Response(stream_with_context(relay_audio_stream(url, data, files)), mimetype='audio/wav')
+
     else:
         response = requests.post(url, files=files, data=data)
         text_response = response.text
-
         return Response(text_response, mimetype='text/plain')
 
 @app.route("/upload/text/", methods=["POST"])
@@ -77,12 +77,12 @@ def upload_text():
     data["tts"] = tts
 
     if tts:
-        url = "http://localhost:5001/generateSpeechFromText"
+        url = "http://localhost:5000/generateSpeechFromText"
         
         return Response(stream_with_context(relay_audio_stream(url, data)), mimetype='audio/wav')
     
     else:
-        url = "http://localhost:5001/generateTextFromText"
+        url = "http://localhost:5000/generateTextFromText"
         response = requests.post(url, data=data)
         text_response = response.text
 
@@ -105,7 +105,7 @@ def upload_file():
         return splitter.split_text(text)
     chunks = chunk_document()
 
-    url = "http://localhost:5001/generateEmbeddings"
+    url = "http://localhost:5000/generateEmbeddings"
     data = {
         "texts": chunks,
     }
@@ -116,7 +116,7 @@ def upload_file():
     index = faiss.IndexFlatL2(embeddings_array.shape[1])
     index.add(embeddings_array)
 
-    url = "http://localhost:5001/indexEmbeddings"
+    url = "http://localhost:5000/indexEmbeddings"
     data = {
         "chunks": chunks,
         "embeddings": embeddings,
