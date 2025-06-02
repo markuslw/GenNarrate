@@ -127,7 +127,7 @@ There are two endpoints in the inference engine that facilitates for storing fil
     \item \textbf{/indexEmbeddings:} endpoint receives both the raw chunks and their precomputed embeddings, and stores them in ChromaDB under a common document identifier. Each chunk is assigned a unique ID to support retrieval later during inference.
 \end{itemize}
 
-\subsection{ASR with Whisper}
+\subsubsection{ASR with Whisper}
 The Automatic Speech Recognition (ASR) component uses OpenAI’s \texttt{whisper-large-v3}\cite{radford2022whisper} model to transcribe user audio input into text. The model is loaded onto the GPU at server startup and used through a Hugging Face pipeline for streamlined inference.
 
 Incoming audio is received as a file upload and is then loaded into memory using \texttt{torchaudio}\cite{torchaudio}. Since most microphones use 44.1kHz or 48kHz, all audio is resamples to meet Whisper's requirement of 16kHz before inference. If the audio is stereo, it is down-mixed to mono. When the transcription is complete, the resulting text is then appended to the conversation history and passed on for further response generation for the LLM.
