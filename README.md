@@ -1,6 +1,9 @@
 # 🧠 GenNarrate
 A generative artificial intelligence project by @markuslw and @toropdahl for the INF-3993 course @ UiT
 
+---
+This project is a web application that allows users to provide an LLM with prompts or files, which the LLM uses in combination with RAG to provide a response. The application is built using Flask for the backend and inference, and React.js for the frontend.
+
 ## 📁 Structure
 
 ```
@@ -84,7 +87,7 @@ Once installed, you will have to create a conda environment with the required pa
 
 ```bash
 $ cd inference/
-$ conda env create -f environment.yml # environment.yml file contains the required packages
+$ conda env create -f environment.yml # environment.yml file contains the required packages from apt and pip
 $ conda activate inference # the name of the environment is inference as defined in the YML file
 ```
 
