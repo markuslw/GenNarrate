@@ -27,8 +27,8 @@ def create_conversation(data, prompt, history):
     data["history"] = history
     data["conversation"] = conversation
 
-def relay_audio_stream(url, data):
-    with requests.post(url, data=data, stream=True) as response:
+def relay_audio_stream(url, data, files=None):
+    with requests.post(url, data=data, files=files, stream=True) as response:
         for chunk in response.iter_content(chunk_size=4096):
             if chunk:
                 yield chunk
@@ -57,7 +57,7 @@ def upload_speech():
     url = "http://localhost:5001/recognizeTextFromSpeech"
 
     if tts:
-        return Response(stream_with_context(relay_audio_stream(url, data)), mimetype='audio/wav')
+        return Response(stream_with_context(relay_audio_stream(url, data, files)), mimetype='audio/wav')
     else:
         response = requests.post(url, files=files, data=data)
         text_response = response.text

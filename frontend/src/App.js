@@ -50,8 +50,17 @@ function App() {
       });
 
     if (response) {
-      const data = await response.text();
-      setHistory(history => [...history, { role: "Botty", content: data }]);
+      if (textToSpeech) {
+        const blob = await response.blob();
+        const audioURL = URL.createObjectURL(blob);
+        const audio = new Audio(audioURL);
+        audio.play();
+
+        setHistory(history => [...history, { role: "Botty", content: "Playing audio..." }]);
+      } else {
+        const data = await response.text();
+        setHistory((history) => [...history, { role: "Botty", content: data }]);
+      }
     }
   };
 

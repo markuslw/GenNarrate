@@ -45,16 +45,16 @@ allocated = torch.cuda.memory_allocated() / (1024 ** 2)
 reserved = torch.cuda.memory_reserved() / (1024 ** 2)
 
 # Coder
-coder_model_id = "TroyDoesAI/MermaidStable3B"
-coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
-coder_model = AutoModelForCausalLM.from_pretrained(
-    coder_model_id,
-    torch_dtype=torch.float16,
-    low_cpu_mem_usage=True,
-    trust_remote_code=True
-)
-coder_model.to("cuda:0")    # Move model to GPU
-coder_model.eval()          # Set model to evaluation mode
+#coder_model_id = "TroyDoesAI/MermaidStable3B"
+#coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
+#coder_model = AutoModelForCausalLM.from_pretrained(
+#    coder_model_id,
+#    torch_dtype=torch.float16,
+#    low_cpu_mem_usage=True,
+#    trust_remote_code=True
+#)
+#coder_model.to("cuda:0")    # Move model to GPU
+#coder_model.eval()          # Set model to evaluation mode
 
 # ASR
 speech_model_id = "openai/whisper-large-v3"
@@ -135,23 +135,7 @@ def retrieve_relevant_context(prompt, k=3):
 """
 def generate_response(conversation, prompt):
     context = retrieve_relevant_context(prompt)
-
-    full_prompt = f"""
-        You are a helpful assistant. Use the following 
-        context to help answer the user's question.
-
-        Context:
-        {context}
-
-        Conversation so far:
-        {conversation}
-
-        User: {prompt}
-        Botty:"""
-    
     label = classify_prompt(prompt)
-
-    print(f"\n\nClassified prompt as: {label}\n\n", flush=True)
 
     if (
         label == "text_explaination" or \
@@ -165,8 +149,10 @@ def generate_response(conversation, prompt):
         response_tokenizer = llm_tokenizer
     else:
         simple_label = "mermaid"
-        response_model = coder_model
-        response_tokenizer = coder_tokenizer
+        response_model = llm_model
+        response_tokenizer = llm_tokenizer
+
+    full_prompt = f"Context:\n{context}\nConversation so far:\n{conversation}\nUser: {prompt}\nBotty:"
 
     inputs = response_tokenizer(full_prompt, return_tensors="pt").to(response_model.device)
     with torch.no_grad():
@@ -299,6 +285,9 @@ def embed_text():
 
     return jsonify({"embeddings": embeddings})
 
+"""
+    Endpoint for storing embeddings in ChromaDB.
+"""
 @app.route("/indexEmbeddings", methods=["POST"])
 def store_embeddings():
     data = request.get_json()

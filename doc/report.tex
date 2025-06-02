@@ -95,6 +95,7 @@ The \verb|/upload/text/| endpoint takes the same parameters as the previous endp
 Out of the three, the \verb|/upload/file| endpoint handles the most intensive logic. After receiving a file, it will read the contents of the file as text, and chunk it into smaller pieces. The chunks are then sent to the \verb|/indexEmbeddings| endpoint of the inference engine which uses a sentence transformer model to return an embedding for each chunk. These embeddings are indexed using FAISS, which is a library for efficient similarity search and clustering of dense vectors. The embeddings are stored in ChromaDB\cite{chromadb2023} under a common document identifier, allowing them to be retrieved later during inference. This process enables a Retrieval-Augmented Generation (RAG) pipeline that enhances the LLM's inference capability. This endpoint returns a simple success message to the user interface, indicating that the file has been successfully processed and indexed.
 
 \subsection{Inference Engine}
+For this section, we will emphasize the models in order to reflect the course content.
 
 \subsubsection{DeepSeek LLM}
 The inference engine loads the\\\texttt{deepseek-llm-7b-chat}\cite{deepseek7bchat} model using the Hugging Face \texttt{transformers} library. Its initialized with \texttt{float16} precision and moved to GPU memory on server startup for better efficiency. To avoid unessecary gradient computations, the model is paired with a corresponding tokenizer which is set to evaluation mode.\\
@@ -137,10 +138,7 @@ Audio chunks are streamed as they are created using Flask's \texttt{stream\_with
     \item \textbf{generate\_audio\_stream(text):} This function uses the Kokoror TTS pipeline to transform input text into speech. The Kokoro pipeline returns an iterator over audio chunks, which are encoded into WAV format. The function yields these chunks incrementally via a Flask stream, enabling real-time audio playback in the client.
 \end{itemize}
 
-\subsubsection{Port forwarding}
-
 \section{Experiments and Results}
-
 
 \section{Discussion}
 
