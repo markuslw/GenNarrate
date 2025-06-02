@@ -185,6 +185,16 @@ Additional tests where also conducted to check the functionality and user-friend
 Although we will not include these tests in detail, the tests we have done to test overall system functionality has been successful.
 
 \section{Discussion}
+The experimental results demonstrate a strong correlation between prompt complexity and LLM inference time. As shown in Figure~\ref{fig:inference-times}, the system scales well for short and medium prompts, but latency increases significantly for longer, more complex queries.
+
+This trend is consistent with the expected behavior of transformer-based models, where both the input and the generated output sequences contribute to overall computational cost. The shortest prompts (one sentence) yielded average response times under one second, highlighting the efficiency of the system in handling simple queries. However, as the prompt length and expected output size increased, the average inference time rose sharply, peaking at over 10 seconds for the most complex prompt. Notably, the error bars increase with prompt complexity, indicating greater variability in performance under heavier loads, possibly due to dynamic allocation of system resources such as memory or GPU threads.
+
+These findings suggest that inference latency is a non-negligible factor in deployment scenarios involving complex interactions, such as conversational agents or document comprehension systems. For real-time applications, developers should be mindful of how prompt length affects responsiveness, especially when low latency is a requirement.
+
+Furthermore, this experiment underscores the importance of controlled benchmarking. By restarting the server between trials and isolating variables, the observed trends can more reliably be attributed to the prompt structure itself, rather than side effects like poor caching og prior context.
+
+While the performance remains within acceptable limits even for long prompts, optimizations strategies such as prompt tuning, model distillation, or token streaming could be explored to further reduce latency in production environments.
+
 \subsection{Unfinished Features}
 In the implementation of the backend server, there is a implementation of a feature that is not yet finished as it does not communicate with the frontend. The features goal is to take a PDF file, and send this file to a GPT-4 model using OpenAI's API, so that this model can separate the PDF into narratable chunks that are contextually made, meaning that the document is split up in such a way that there is natural pauses between each chunk, so that each chunk stops at an appropriate point in the text and is not awkward, enhancing user experienceS.
 

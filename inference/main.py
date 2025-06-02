@@ -42,16 +42,16 @@ llm_model.to("cuda:0")      # Move model to GPU
 llm_model.eval()            # Set model to evaluation mode
 
 # Coder 
-#coder_model_id = "TroyDoesAI/MermaidStable3B"
-#coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
-#coder_model = AutoModelForCausalLM.from_pretrained(
-#    coder_model_id,
-#    torch_dtype=torch.float16,
-#    low_cpu_mem_usage=True,
-#    trust_remote_code=True
-#)
-#coder_model.to("cuda:0")    # Move model to GPU
-#coder_model.eval()          # Set model to evaluation mode
+coder_model_id = "TroyDoesAI/MermaidStable3B"
+coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
+coder_model = AutoModelForCausalLM.from_pretrained(
+    coder_model_id,
+    torch_dtype=torch.float16,
+    low_cpu_mem_usage=True,
+    trust_remote_code=True
+)
+coder_model.to("cuda:0")    # Move model to GPU
+coder_model.eval()          # Set model to evaluation mode
 
 # ASR
 speech_model_id = "openai/whisper-large-v3"
