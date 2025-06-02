@@ -41,10 +41,7 @@ llm_model = AutoModelForCausalLM.from_pretrained(
 llm_model.to("cuda:0")      # Move model to GPU
 llm_model.eval()            # Set model to evaluation mode
 
-allocated = torch.cuda.memory_allocated() / (1024 ** 2)
-reserved = torch.cuda.memory_reserved() / (1024 ** 2)
-
-# Coder
+# Coder 
 #coder_model_id = "TroyDoesAI/MermaidStable3B"
 #coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
 #coder_model = AutoModelForCausalLM.from_pretrained(
@@ -325,4 +322,4 @@ def narrate_text():
     return Response(stream_with_context(generate_audio_stream(prompt)), mimetype='audio/wav')
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, use_reloader=False, host="0.0.0.0", port=5000)
