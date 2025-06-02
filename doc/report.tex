@@ -133,6 +133,7 @@ The Automatic Speech Recognition (ASR) component uses OpenAI’s \texttt{whisper
 Incoming audio is received as a file upload and is then loaded into memory using \texttt{torchaudio}\cite{torchaudio}. Since most microphones use 44.1kHz or 48kHz, all audio is resamples to meet Whisper's requirement of 16kHz before inference. If the audio is stereo, it is down-mixed to mono. When the transcription is complete, the resulting text is then appended to the conversation history and passed on for further response generation for the LLM.
 
 This component powers hands-free interaction via the \texttt{/recognizeTextFromSpeech} endpoint and enables the system to support voice-based dialogue.
+
 \subsubsection{TTS with Kokoro}
 The Text-to-Speech (TTS) component uses the Kokoro-82M model\cite{kokoro82m} to synthesize audio from text. The model is accessed through the \texttt{KPipeline} interface, which produces audio in small chunks suitable for streaming.
 
@@ -144,6 +145,7 @@ Audio chunks are streamed as they are created using Flask's \texttt{stream\_with
     \item \textbf{/generateTextFromText:} Endpoint that\\ receives prompt from user, and sends prompt on for further processing with the \texttt{generate\_response()} function before feeding to the LLM.
     \item \textbf{/generateSpeechFromText:} Receives user prompt, processes full query and receives respons from LLM, then sends audio stream back with function \texttt{generate\_audio\_stream()} that creates audio from the text provided by the LLM.
 \end{itemize}
+
 \subsubsection{Importiant Functions}
 \label{sec:functions}
 \begin{itemize}
@@ -154,9 +156,35 @@ Audio chunks are streamed as they are created using Flask's \texttt{stream\_with
 \end{itemize}
 
 \section{Experiments and Results}
+To evaluate the performance of the inference engine, we conducted a series of timing experiments focused on the language model component. The goal was to assess how the system scales with different levels of input and output complexity. In each experiment, the prompt was varied in length and expected output size, while all other conditions remained constant. Each prompt configuration was tested five times to account for natural variation in inference time.
+
+The server was restarted between experiments to ensure consistent baseline conditions with no prior conversation history.
+
+\subsection{Prompt Categories}
+We defined four prompt categories:
+\begin{itemize}
+    \item \textbf{Short prompt, short output:} A single-sentence query expecting a brief response.
+    \item \textbf{Medium prompt, medium output:} Two-sentence input with a more informative paragraph-length response.
+    \item \textbf{Long prompt, long output:} Three-sentence query requiring a multi-paragraph answer.
+    \item \textbf{Extended prompt, extended output:} A detailed four-sentence prompt with an expected response of over 700 tokens.
+\end{itemize}
+
+\subsection{LLM Inference Time}
+The timing results for each prompt category are summarized in Figure~\ref{fig:inference-times}. Each bar represents the average inference time for that category, with error bars showing standard deviation across the five runs.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{imgs/output.png} 
+    \caption{Average LLM inference time for prompts of increasing complexity.}
+    \label{fig:inference-times}
+\end{figure}
+The results show a clear upward trend in inference time as prompt and output complexity increases. The shortest queries averaged under one second, while the most demanding prompt required over 10 seconds on average. This demonstrates how prompt design can significantly influence response latency, which is an important consideration in real-time or user-facing applications.
+
+\subsection{Other Tests}
+Additional tests where also conducted to check the functionality and user-friendliness of the application, to give us an idea on further improvements and see that what implemented actually works the way it should work. Since this is not measurable by any meaningful metrics, this report will not cover this as it would not be scientific.
+
+Although we will not include these tests in detail, the tests we have done to test overall system functionality has been successful.
 
 \section{Discussion}
-
 \subsection{Unfinished Features}
 In the implementation of the backend server, there is a implementation of a feature that is not yet finished as it does not communicate with the frontend. The features goal is to take a PDF file, and send this file to a GPT-4 model using OpenAI's API, so that this model can separate the PDF into narratable chunks that are contextually made, meaning that the document is split up in such a way that there is natural pauses between each chunk, so that each chunk stops at an appropriate point in the text and is not awkward, enhancing user experienceS.
 
