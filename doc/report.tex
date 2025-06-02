@@ -52,16 +52,18 @@ The model this project uses for speech recognition is Whisper from OpenAI. Whisp
 
 Whisper processes incoming speech by first resampling it to 16kHz and then encoding the waveform before generating the corresponding text tokens. In our system, this transcribed text is passed to the language model for further processing. The use of Whisper enables hands-free interaction with the DeepSeek LLM, making the system multimodal.
 
-\subsection{Zero-Shot Classification (ZSC) | NEEDS EDIT}
-To determine the intent of user prompts, the system uses zero-shot classification via the \texttt{facebook/bart-large-mnli} model\cite{facebook_bart_large_mnli}.
-
-This model leverages a natural language inference (NLI) framework to evaluate how well a user input matches a set of candidate labels. In our implementation, it classifies whether a prompt is best routed to the DeepSeek 7B LLM, a coder model from DeepSeek, or to MermaidStable. 
-
 \subsection{Text-to-Speech (TTS)}
 To produce spoken responses, the project uses the Kokoro-82M TTS model\cite{kokoro82m}. This neural model converts generated text into speech using the \texttt{af\_heart} voice and returns an audio stream in real time.
 
 \section{Design}
-The system follows a three-tiered architecture with clearly separated frontend, backend, and inference layers.
+The system follows a three-tiered architecture with clearly separated frontend, backend, and inference layers. As visualized in Figure~\ref{fig:architecture}, the frontend is responsible for user interaction, the backend handles data processing and logic, and the inference engine performs the heavy computational tasks.
+
+\begin{figure*}[htb]
+    \centering
+    \includegraphics[width=0.75\textwidth]{imgs/architecture.png}
+    \caption{System architecture of GenNarrate, illustrating the interaction between the frontend, backend, and inference engine.}
+    \label{fig:architecture}
+\end{figure*}
 
 \subsection{User Interface}
 The UI, also known as the frontend, is written in JavaScript with the React.js\cite{reactjs} framework. React.js is a widely adopted JavaScript library for developing user interfaces in a component-based manner. This part of the design provides a clean user-friendly experience, allowing users to interact with the system through a web browser. The UI includes features for text, voice and file input, as well as displaying the generated responses from the models.
@@ -86,7 +88,7 @@ However, if the user submits a text or audio prompt with the text-to-speech stat
 The JavaScript also enables the user to record audio using a third-party recording library.
 
 \subsection{Application Layer}
-The application layer is an API connecting the user interface to the inference engine, pre-processing data and managing conversation history.
+The application layer is an API connecting the user interface to the inference engine, pre-processing data and managing conversation history. See Figure~\ref{fig:applayer} for an overview of the application layer endpoints.
 
 \verb|/upload/speech/| serves as the endpoint for uploading audio files, and demands the audio file, \verb|history| as \verb|JSON| and the text-to-speech variable. Using a custom made function, the \verb|history| is formatted into a suitable string called \verb|conversation| for the AI models on the inference engine. The audio file is then forwarded for transcription using the \verb|/recognizeTextFromSpeech| endpoint of the inference engine. Depending on the text-to-speech variable, the response is either returned as a text string, or relayed as an audio stream to the user interface.
 
@@ -94,14 +96,28 @@ The \verb|/upload/text/| endpoint takes the same parameters as the previous endp
 
 Out of the three, the \verb|/upload/file| endpoint handles the most intensive logic. After receiving a file, it will read the contents of the file as text, and chunk it into smaller pieces. The chunks are then sent to the \verb|/indexEmbeddings| endpoint of the inference engine which uses a sentence transformer model to return an embedding for each chunk. These embeddings are indexed using FAISS, which is a library for efficient similarity search and clustering of dense vectors. The embeddings are stored in ChromaDB\cite{chromadb2023} under a common document identifier, allowing them to be retrieved later during inference. This process enables a Retrieval-Augmented Generation (RAG) pipeline that enhances the LLM's inference capability. This endpoint returns a simple success message to the user interface, indicating that the file has been successfully processed and indexed.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{imgs/applayer.png}
+    \caption{Overview of the application layer endpoints}
+    \label{fig:applayer}
+\end{figure}
+
 \subsection{Inference Engine}
-For this section, we will emphasize the models in order to reflect the course content.
+For this section, we will emphasize the models in order to reflect the course content. See Figure~\ref{fig:inference} for an overview of the inference engine and its connection to the application layer and the database.
 
 \subsubsection{DeepSeek LLM}
 The inference engine loads the\\\texttt{deepseek-llm-7b-chat}\cite{deepseek7bchat} model using the Hugging Face \texttt{transformers} library. Its initialized with \texttt{float16} precision and moved to GPU memory on server startup for better efficiency. To avoid unessecary gradient computations, the model is paired with a corresponding tokenizer which is set to evaluation mode.\\
 Each incoming request includes the conversation history and current prompt. Before generation, the system retrieves contextual information from ChromaDB. The context is always added to the prompt string if context is available. The fully assembled query is then tokenized and passed to the model, the generatd output is then decoded and returned as text.
 
 \subsubsection{RAG with Chroma DB}
+\begin{figure*}[htb]
+    \centering
+    \includegraphics[width=0.75\textwidth]{imgs/inference.png}
+    \caption{Overview of the inference engine and connection to the application layer}
+    \label{fig:inference}
+\end{figure*}
+
 The Retrieval-Augmented Generation (RAG) component uses the \texttt{all-MiniLM-L6-v2} model from SentenceTransformers to embed both user prompts and document chunks. On startup, the embedding model is loaded onto the GPU.
 
 Document chunks are embedded and stored using ChromaDB\cite{chromadb2023}, a persistent vector database. When a user prompt is received, it is embedded and used to query ChromaDB for the top-k most relevant chunks. These chunks are spliced together into a single context string and added to the context of the LLM input.\\
@@ -122,7 +138,6 @@ The Text-to-Speech (TTS) component uses the Kokoro-82M model\cite{kokoro82m} to 
 
 Audio chunks are streamed as they are created using Flask's \texttt{stream\_with\_context} and encoded as WAV using the \texttt{soundfile}\cite{soundfile} library. Doing this makes it so the system delivered speech responses with minimal delay.
 
-\subsubsection{Zero-Shot Classifier -> EMPTY FOR NOW}
 \subsubsection{Endpoints Overview}
 \begin{itemize}
     \item \textbf{/recognizeTextFromSpeech:} Generates text audio sent by user to then pass on for further processing by the \texttt{generate\_response()} function (see Section \ref{sec:functions}).
@@ -142,8 +157,19 @@ Audio chunks are streamed as they are created using Flask's \texttt{stream\_with
 
 \section{Discussion}
 
-\section{Conclusion}
+\subsection{Unfinished Features}
+In the implementation of the backend server, there is a implementation of a feature that is not yet finished as it does not communicate with the frontend. The features goal is to take a PDF file, and send this file to a GPT-4 model using OpenAI's API, so that this model can separate the PDF into narratable chunks that are contextually made, meaning that the document is split up in such a way that there is natural pauses between each chunk, so that each chunk stops at an appropriate point in the text and is not awkward, enhancing user experienceS.
 
+This enables the user to have the application read the document to them, chunk by chunk, so that the user can ask questions about the chunk they just heard. 
+
+The reason for choosing to go for a larger LLM in this case is simple, its a different way of interacting with a LLM, and also the model on the inference server cannot handle very large documents, something GPT4 handles exceptionally better.
+
+\section{Conclusion}
+GenNarrate demonstrates how generative AI models can be combined to form an end-to-end multimodal system for document comprehension. By integrating a large language model, a TTS engine, and optional ASR functionality, the system allows users to consume and interact with written documents through speech.
+
+The architecture was designed with clarity and modularity in mind, separating the inference engine from the application logic and user interface.
+
+Although this project is built for a single-user research setting, it showcases the potential of deploying conversational AI beyond traditional chat interfaces.
 
 \subsubsection{}
 \bibliographystyle{plain}

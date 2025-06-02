@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
+
+# Flask and communication libraries
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
+
+# General imports
 import requests
 import json
 from pymongo import MongoClient
 
-import uuid
-
 # RAG imports
 import fitz
+import uuid
 import faiss
 import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter

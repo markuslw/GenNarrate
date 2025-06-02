@@ -183,6 +183,9 @@ def generate_audio_stream(response):
 
 app = Flask(__name__)
 
+"""
+    This endpoint is used to check the status of the API.
+"""
 @app.route("/")
 def index():
     allocated = torch.cuda.memory_allocated() / (1024 ** 2)
@@ -191,15 +194,6 @@ def index():
     response = f"alloc {allocated}MB and reserved {reserved}MB\n"
 
     return Response(response, mimetype='text/plain')
-
-@app.route("/healthcheck", methods=["GET"])
-def healthcheck():
-    allocated = torch.cuda.memory_allocated() / (1024 ** 2)
-    reserved = torch.cuda.memory_reserved() / (1024 ** 2)
-    return jsonify({
-        "cuda_memory_allocated_mb": allocated,
-        "cuda_memory_reserved_mb": reserved
-    })
 
 """
     This endpoint is used to reccognize text from input speech.
@@ -256,6 +250,9 @@ def recognize_text_from_speech():
     else:
         return Response(response, mimetype='text/plain')
 
+"""
+    This endpoint is used to reccognize text from input speech.
+"""
 @app.route("/generateSpeechFromText", methods=["POST"])
 def generate_speech_from_text():
     prompt = request.form.get("prompt")
@@ -266,6 +263,9 @@ def generate_speech_from_text():
 
     return Response(stream_with_context(generate_audio_stream(response)), mimetype='audio/wav')
 
+"""
+    Endpoint for generating speech from text input.
+"""
 @app.route("/generateTextFromText", methods=["POST"])
 def text_to_text():
     prompt = request.form.get("prompt")
@@ -276,6 +276,9 @@ def text_to_text():
 
     return Response(response, mimetype='text/plain')
 
+"""
+    Endpoint for generating text from text input.
+"""
 @app.route("/generateEmbeddings", methods=["POST"])
 def embed_text():
     data = request.get_json()
