@@ -323,5 +323,18 @@ def store_embeddings():
     return Response("Embeddings stored successfully", status=200, mimetype='text/plain')
 
 
+"""
+    Endpoint for narrating text sent.
+    Takes text as input and returns a audio .wav file.
+"""
+@app.route("/narrateText", methods=["POST"])
+def narrate_text():
+    prompt = request.form.get("prompt")
+
+    return Response(stream_with_context(generate_audio_stream(prompt)), mimetype='audio/wav')
+
+
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
