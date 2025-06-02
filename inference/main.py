@@ -41,7 +41,8 @@ llm_model = AutoModelForCausalLM.from_pretrained(
 llm_model.to("cuda:0")      # Move model to GPU
 llm_model.eval()            # Set model to evaluation mode
 
-# Coder 
+# Coder (Couldn't render in front-end DNF)
+""""
 coder_model_id = "TroyDoesAI/MermaidStable3B"
 coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
 coder_model = AutoModelForCausalLM.from_pretrained(
@@ -52,6 +53,7 @@ coder_model = AutoModelForCausalLM.from_pretrained(
 )
 coder_model.to("cuda:0")    # Move model to GPU
 coder_model.eval()          # Set model to evaluation mode
+"""
 
 # ASR
 speech_model_id = "openai/whisper-large-v3"
@@ -145,11 +147,17 @@ def generate_response(conversation, prompt):
         response_model = llm_model
         response_tokenizer = llm_tokenizer
     else:
+        # Using LLM since coder model is not available
         simple_label = "mermaid"
         response_model = llm_model
         response_tokenizer = llm_tokenizer
 
-    full_prompt = f"Context:\n{context}\nConversation so far:\n{conversation}\nUser: {prompt}\nBotty:"
+    full_prompt = (
+        f"Context:\n{context}\n"
+        f"Conversation so far:\n{conversation}\n"
+        f"User: {prompt}\n"
+        "Botty:"
+    )
 
     inputs = response_tokenizer(full_prompt, return_tensors="pt").to(response_model.device)
     with torch.no_grad():

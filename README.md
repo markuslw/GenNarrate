@@ -5,7 +5,7 @@ A generative artificial intelligence project by @markuslw and @toropdahl for the
 This project is a web application that allows users to provide an LLM with prompts or files, which the LLM uses in combination with RAG to provide a response. The application is built using Flask for the backend and inference, and React.js for the frontend.
 
 > [!NOTE]
-> As of now, you will have to turn the microphone off again to send the audio to the LLM.
+> As of now, you will have to turn the microphone off again to send the audio to the LLM. Press enter after uploading a file or text.
 
 ## 📁 Structure
 
