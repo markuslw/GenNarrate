@@ -11,8 +11,10 @@ import fitz
 import faiss
 import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-client = OpenAI(api_key="!!!")
+client = OpenAI(api_key="you need your own")
 
+chunk_dict = {} # dictionary that keeps track of all chunks text
+audio_file_names = {} # dictionary that keeps track of corresponding file names of chunks
 def create_conversation(data, prompt, history):
     decoded_history = json.loads(history)
 
@@ -211,6 +213,8 @@ def send_chunk_for_narration(text, number):
                     if chunk:
                         with open(f"./audio/output_{number}.wav", "ab") as f:
                             f.write(chunk)
+                            audio_file_names[number] = f"output_{number}.wav"
+
     try:    
         save_audio_stream()
     except (requests.exceptions.RequestException, RuntimeError) as e:
@@ -219,6 +223,21 @@ def send_chunk_for_narration(text, number):
 
     return 0
 
+@app.route("/upload/file/narrate", methods=["POST"])
+def upload_file_for_narration():
+    #file = request.files.get("file")
+    file = fitz.open("report.pdf")
+    text = ""
+    with fitz.open(stream=file.read(), filetype="pdf") as doc:
+        full_text = "".join(page.get_text() for page in doc)
+    chunk_dict = chunk_text_via_gpt(full_text)
+    i = 0
+    for chunk in chunk_dict.keys():
+        if send_chunk_for_narration(chunk_dict[i]):
+            print("success")
+        else:
+            print("Fuck")
+
                   
 
 if __name__ == "__main__":
@@ -226,5 +245,6 @@ if __name__ == "__main__":
     #doc = fitz.open("report.pdf")
     #full_text = "".join(page.get_text() for page in doc)
     #chunks = chunk_text_via_gpt(full_text)
-    #print(chunks)
-    send_chunk_for_narration("This is a test to see if i get it to work!", 0)
+    #print(chunks[0])
+    #send_chunk_for_narration("This is a test to see if i get it to work!", 0)
+    upload_file_for_narration()
