@@ -101,7 +101,7 @@ def upload_file():
         return splitter.split_text(text)
     chunks = chunk_document()
 
-    url = "http://localhost:5001/embedText"
+    url = "http://localhost:5001//generateEmbeddings"
     data = {
         "texts": chunks,
     }
@@ -203,13 +203,13 @@ Text:
 def send_chunk_for_narration(text, number):
     data = {}
     data["prompt"] = text
-    url = "http://localhost:5001/narrateText"
+    url = "http://localhost:5000/narrateText"
 
     def save_audio_stream():
             with requests.post(url, data=data, stream=True) as response:
-                for chunk in response.iter_content(chunk_size=4096):
+                for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
-                        with open(f"output_{number}.wav", "ab") as f:
+                        with open(f"./audio/output_{number}.wav", "ab") as f:
                             f.write(chunk)
     try:    
         save_audio_stream()
@@ -219,6 +219,7 @@ def send_chunk_for_narration(text, number):
 
     return 0
 
+                  
 
 if __name__ == "__main__":
     #app.run(debug=True, host="0.0.0.0", port=8000)
