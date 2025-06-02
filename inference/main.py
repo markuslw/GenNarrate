@@ -22,11 +22,8 @@ import torchaudio
 import torchaudio.transforms as T
 
 # RAG imports
-import fitz
-import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
 from chromadb.config import Settings
 
@@ -44,8 +41,11 @@ llm_model = AutoModelForCausalLM.from_pretrained(
 llm_model.to("cuda:0")      # Move model to GPU
 llm_model.eval()            # Set model to evaluation mode
 
+allocated = torch.cuda.memory_allocated() / (1024 ** 2)
+reserved = torch.cuda.memory_reserved() / (1024 ** 2)
+
 # Coder
-coder_model_id = "deepseek-ai/DeepSeek-Coder-V2-Instruct"
+coder_model_id = "TroyDoesAI/MermaidStable3B"
 coder_tokenizer = AutoTokenizer.from_pretrained(coder_model_id)
 coder_model = AutoModelForCausalLM.from_pretrained(
     coder_model_id,
@@ -82,7 +82,7 @@ embedder = SentenceTransformer(rag_model_id)
 embedder.to("cuda:0")
 
 ## ChromaDB client and collection
-chroma_client = chromadb.PersistentClient(path="/database")
+chroma_client = chromadb.Client(Settings())
 chroma_collection = chroma_client.get_or_create_collection(name="documents")
 
 """
@@ -90,10 +90,19 @@ chroma_collection = chroma_client.get_or_create_collection(name="documents")
 """
 def classify_prompt(prompt):
     candidate_labels = [
-        "code_generation",
-        "text_answer",
-        "math_explanation",
-        "data_analysis",
+        # Routes to MermaidStable3B
+        "flowchart_diagram",
+        "uml_diagram",
+        "sequence_diagram",
+        "state_machine",
+        "graph_visualization",
+
+        # Routes to LLM
+        "text_explanation",
+        "math_reasoning",
+        "data_insight",
+        "general_question",
+        "code_explanation",
     ]
 
     result = classifier(prompt, candidate_labels)
@@ -142,12 +151,20 @@ def generate_response(conversation, prompt):
     
     label = classify_prompt(prompt)
 
-    print(f"Classified prompt as: {label}", flush=True)
+    print(f"\n\nClassified prompt as: {label}\n\n", flush=True)
 
-    if label == "text_answer":
+    if (
+        label == "text_explaination" or \
+        label == "general_question" or \
+        label == "code_explanation" or \
+        label == "math_reasoning" or \
+        label == "data_insight"
+        ):
+        simple_label = "text"
         response_model = llm_model
         response_tokenizer = llm_tokenizer
     else:
+        simple_label = "mermaid"
         response_model = coder_model
         response_tokenizer = coder_tokenizer
 
@@ -160,7 +177,7 @@ def generate_response(conversation, prompt):
         response = generated.rsplit("Botty:", 1)[-1].strip()
     else:
         response = generated.strip()
-
+    
     return response
 
 """
@@ -185,9 +202,7 @@ def index():
     allocated = torch.cuda.memory_allocated() / (1024 ** 2)
     reserved = torch.cuda.memory_reserved() / (1024 ** 2)
 
-    response = f"""
-    API running with alloc {allocated}MB and reserved {reserved}MB
-    """
+    response = f"alloc {allocated}MB and reserved {reserved}MB\n"
 
     return Response(response, mimetype='text/plain')
 

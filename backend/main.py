@@ -5,6 +5,8 @@ import requests
 import json
 from pymongo import MongoClient
 
+import uuid
+
 # RAG imports
 import fitz
 import faiss
@@ -17,13 +19,19 @@ def create_conversation(data, prompt, history):
     conversation = ""
     for entry in decoded_history:
         role = entry.get("role")
-        text = entry.get("text")
-        conversation += f"{role.capitalize()}: {text}\n"
+        content = entry.get("content")
+        conversation += f"{role.capitalize()}: {content}\n"
     if prompt:
         conversation += f"User: {prompt}\n"
 
     data["history"] = history
     data["conversation"] = conversation
+
+def relay_audio_stream(url, data):
+    with requests.post(url, data=data, stream=True) as response:
+        for chunk in response.iter_content(chunk_size=4096):
+            if chunk:
+                yield chunk
 
 app = Flask(__name__)
 CORS(app)
@@ -47,10 +55,14 @@ def upload_speech():
     files = {"audio": (speech.filename, speech.stream, speech.mimetype)}
 
     url = "http://localhost:5001/recognizeTextFromSpeech"
-    response = requests.post(url, files=files, data=data)
-    text_response = response.text
 
-    return Response(text_response, mimetype='text/plain')
+    if tts:
+        return Response(stream_with_context(relay_audio_stream(url, data)), mimetype='audio/wav')
+    else:
+        response = requests.post(url, files=files, data=data)
+        text_response = response.text
+
+        return Response(text_response, mimetype='text/plain')
 
 @app.route("/upload/text/", methods=["POST"])
 def upload_text():
@@ -66,14 +78,8 @@ def upload_text():
 
     if tts:
         url = "http://localhost:5001/generateSpeechFromText"
-
-        def relay_audio_stream():
-            with requests.post(url, data=data, stream=True) as response:
-                for chunk in response.iter_content(chunk_size=4096):
-                    if chunk:
-                        yield chunk
         
-        return Response(stream_with_context(relay_audio_stream()), mimetype='audio/wav')
+        return Response(stream_with_context(relay_audio_stream(url, data)), mimetype='audio/wav')
     
     else:
         url = "http://localhost:5001/generateTextFromText"
@@ -99,7 +105,7 @@ def upload_file():
         return splitter.split_text(text)
     chunks = chunk_document()
 
-    url = "http://localhost:5001/embedText"
+    url = "http://localhost:5001/generateEmbeddings"
     data = {
         "texts": chunks,
     }
@@ -110,11 +116,11 @@ def upload_file():
     index = faiss.IndexFlatL2(embeddings_array.shape[1])
     index.add(embeddings_array)
 
-    url = "http://localhost:5001/storeEmbeddings"
+    url = "http://localhost:5001/indexEmbeddings"
     data = {
         "chunks": chunks,
         "embeddings": embeddings,
-        "doc_id": "96837596_doc",
+        "doc_id": str(uuid.uuid4()),
     }
     response = requests.post(url, json=data)
     if response.status_code != 200:

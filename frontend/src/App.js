@@ -10,10 +10,17 @@ import Recorder from 'recorder-js';
 function App() {
 
   /*
-    State variables to manage speech and text-to-speech features.
+    State variables to manage recording and text-to-speech features.
   */
   const [speech, setSpeech] = useState(false);
   const [textToSpeech, setTextToSpeech] = useState(false);
+
+  /*
+    State variables to manage audio recording.
+  */
+  const [isRecording, setIsRecording] = useState(false);
+  const [recorder, setRecorder] = useState(null);
+  const [stream, setStream] = useState(null);
 
   /*
     State variables to manage prompt, file, and chat history.
@@ -26,16 +33,9 @@ function App() {
   ]);
 
   /*
-    State variables to manage audio recording.
-  */
-  const [isRecording, setIsRecording] = useState(false);
-  const [recorder, setRecorder] = useState(null);
-  const [stream, setStream] = useState(null);
-
-  /*
     Function to send audio data to the server.
   */
-  const sendAudio = async (audioBlob) => {
+  const submitAudio = async (audioBlob) => {
     const formData = new FormData();
     formData.append('audio', audioBlob);
     if (history.length !== 0) formData.append('history', JSON.stringify(history));
@@ -56,35 +56,6 @@ function App() {
   };
 
   /*
-    Function to start audio recording.
-  */
-  const startRecording = async () => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    const newRecorder = new Recorder(audioContext, {
-      type: 'audio/wav',
-    });
-
-    await newRecorder.init(micStream);
-    newRecorder.start();
-
-    setRecorder(newRecorder);
-    setStream(micStream);
-    setIsRecording(true);
-  };
-
-  /*
-    Function to stop audio recording and send the recorded audio to the server.
-  */
-  const stopRecording = async () => {
-    const { blob } = await recorder.stop();
-    stream.getTracks().forEach(track => track.stop());
-    sendAudio(blob);
-    setIsRecording(false);
-  };
-
-  /*
     Function to handle request.
   */
   const submitPrompt = async (event) => {
@@ -100,7 +71,7 @@ function App() {
     if (history.length !== 0) formData.append('history', JSON.stringify(history));
     if (textToSpeech === true) formData.append('tts', "true");
 
-    setHistory((history) => [...history, {role: "User", text: prompt}]);
+    setHistory((history) => [...history, {role: "User", content: prompt}]);
     setPrompt("");
 
     const response = await fetch('http://localhost:8000/upload/text', {
@@ -145,6 +116,34 @@ function App() {
     setHistory((history) => [...history, { role: "Botty", content: data }]);
   }
 
+    /*
+    Function to start audio recording.
+  */
+  const startRecording = async () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    const newRecorder = new Recorder(audioContext, {
+      type: 'audio/wav',
+    });
+
+    await newRecorder.init(micStream);
+    newRecorder.start();
+
+    setRecorder(newRecorder);
+    setStream(micStream);
+    setIsRecording(true);
+  };
+
+  /*
+    Function to stop audio recording and send the recorded audio to the server.
+  */
+  const stopRecording = async () => {
+    const { blob } = await recorder.stop();
+    stream.getTracks().forEach(track => track.stop());
+    submitAudio(blob);
+    setIsRecording(false);
+  };
   
   /*
     Function to handle text input changes.
